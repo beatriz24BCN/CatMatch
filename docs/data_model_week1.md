@@ -11,119 +11,126 @@ Resumen: documento de diseño conceptual para el MVP de CatMatch. Contiene las c
 
 ---
 
-## Entidad: User
-- Propósito: representar la cuenta de usuario de la plataforma (credenciales y contacto).
-- Atributos clave:
+## Entidad: Person
+- Propósito: representar a la persona que busca adoptar (perfil sin cuenta). En la primera fase Person es la unidad principal de datos sobre el adoptante y NO depende de una cuenta `User`.
+- Atributos principales:
   - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí.
-  - `email` — Tipo: `VARCHAR(255)` — Obligatorio: sí — Unique: sí — Index requerido.
-  - `password_hash` — Tipo: `VARCHAR(255)` / `TEXT` — Obligatorio: sí.
-  - `full_name` — Tipo: `VARCHAR(255)` — Obligatorio: no.
-  - `is_active` — Tipo: `BOOLEAN` — Obligatorio: sí — Default: `true`.
-  - `created_at` — Tipo: `TIMESTAMPTZ` — Obligatorio: sí — Default: `now()`.
-  - `updated_at` — Tipo: `TIMESTAMPTZ` — Obligatorio: no — Actualizar en modificación.
-- Claves y relaciones:
-  - PK: `id`.
-  - Relación 1—1 con `AdopterProfile` (ver `AdopterProfile.user_id`).
-  - Relación 1—N con `Favorite` (ver `Favorite.user_id`).
-- Restricciones importantes:
-  - `email` NOT NULL + UNIQUE.
-  - `password_hash` NOT NULL.
-  - Índice en `email` para búsqueda/autenticación.
-  - Validación del formato de email a nivel de aplicación.
-
----
-
-## Entidad: AdopterProfile
-- Propósito: almacenar detalles personales y preferencias del adoptante usados para matching.
-- Atributos clave:
-  - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí.
-  - `user_id` — Tipo: `UUID` — Obligatorio: sí — FK → `User.id` (1—1).
-  - `bio` — Tipo: `TEXT` — Obligatorio: no.
-  - `location` — Tipo: `VARCHAR(255)` — Obligatorio: no (preferible ciudad/estado o geo).
+  - `full_name` — Tipo: `VARCHAR(255)` — Obligatorio: no — Nombre o alias (útil para la ficha y comunicaciones, opcional para permitir anonimato inicial).
+  - `bio` — Tipo: `TEXT` — Obligatorio: no — Descripción corta sobre estilo de vida y motivaciones.
+  - `location` — Tipo: `VARCHAR(255)` — Obligatorio: no — Ciudad/estado o texto de ubicación (útil para filtrar por cercanía).
   - `household_type` — Tipo: `VARCHAR(20)` o ENUM — Valores: `alone`, `couple`, `family`, `other` — Obligatorio: no.
   - `has_children` — Tipo: `BOOLEAN` — Obligatorio: no — Default: `false`.
   - `has_other_pets` — Tipo: `BOOLEAN` — Obligatorio: no — Default: `false`.
+  - `other_pets_details` — Tipo: `JSONB` — Obligatorio: no — Estructura opcional para describir mascotas existentes (lista de objetos con campos como `species`, `age`, `sex`, `neutered`, `temperament`); útil para evaluar compatibilidad con otros animales.
   - `activity_level` — Tipo: ENUM/`VARCHAR(10)` — Valores controlados (ver sección vocabulario) — Obligatorio: no.
   - `home_type` — Tipo: ENUM/`VARCHAR(20)` — Valores: `apartment`, `house`, `farm`, `other` — Obligatorio: no.
-  - `work_hours_per_day` — Tipo: `SMALLINT` — Obligatorio: no.
-  - `personality_traits` — Tipo: `JSONB` o `TEXT[]` — Obligatorio: no — Lista de rasgos seleccionados (valores controlados).
-  - `preferred_cat_traits` — Tipo: `JSONB` — Obligatorio: no — Estructura para preferencia (p. ej. edad, tamaño, personalidad).
+  - `home_size` — Tipo: ENUM/`VARCHAR(10)` — Valores sugeridos: `small`, `medium`, `large` — Obligatorio: no — Opcional para matizar disponibilidad de espacio interior.
+  - `has_outdoor_space` — Tipo: `BOOLEAN` — Obligatorio: no — Indica si la vivienda dispone de acceso a exterior (jardín, patio, balcón seguro).
+  - `work_hours_per_day` — Tipo: `SMALLINT` — Obligatorio: no — Indicador de tiempo fuera de casa que afecta la necesidad de compañía del gato.
+  - `personality_traits` — Tipo: `JSONB` o `TEXT[]` — Obligatorio: no — Lista de rasgos seleccionados (valores controlados) que describen al adoptante.
+  - `preferred_cat_traits` — Tipo: `JSONB` — Obligatorio: no — Preferencias (ej.: edad, tamaño, carácter) que ayudan al matching.
   - `created_at`, `updated_at` — `TIMESTAMPTZ`.
-- Claves y relaciones:
-  - PK: `id`.
-  - FK: `user_id` → `User.id` (1—1).
-  - Relación 1—N con `Match` (ver `Match.adopter_profile_id`).
-- Restricciones importantes:
-  - Unique constraint en `user_id` para garantizar 1—1 entre `User` y `AdopterProfile`.
-  - Validaciones en la aplicación para formatos y límites (`work_hours_per_day` ≥ 0).
+- Relaciones:
+  - 1—N con `Match` (un Person puede tener múltiples matches contra diferentes Cats).
+  - 1—N con `AdoptionRequest` (un Person puede enviar varias solicitudes a distintos Cats).
+- Campos obligatorios / opcionales:
+  - Obligatorios: `id`, `created_at`.
+  - Opcionales: el resto (permitir crear perfiles ligeros sin requerir datos personales de contacto en esta fase).
+- Información realmente necesaria para el matching:
+  - `activity_level` (coincidir energía/actividad del gato y adoptante).
+  - `personality_traits` (preferencias/rasgos compatibles).
+  - `preferred_cat_traits` (filtros sobre edad/tamaño/rasgos especiales).
+  - `has_children`, `has_other_pets`, `other_pets_details`, `home_type`, `home_size` y `has_outdoor_space` (factores de convivencia y disponibilidad de espacio).
+  - `location` (para priorizar distancia/posibilidad logística).
 
 ---
 
 ## Entidad: Cat
 - Propósito: representar los perfiles de gatos disponibles para adopción.
-- Atributos clave:
+- Atributos principales (mínimos recomendados para el MVP):
   - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí.
   - `name` — Tipo: `VARCHAR(255)` — Obligatorio: sí.
   - `age_stage` — Tipo: ENUM/`VARCHAR(20)` — Valores: `kitten`, `young`, `adult`, `senior` — Obligatorio: sí.
-  - `age_months` — Tipo: `SMALLINT` — Obligatorio: no — Si se requiere precisión.
+  - `age_months` — Tipo: `SMALLINT` — Obligatorio: no.
   - `sex` — Tipo: ENUM/`VARCHAR(10)` — Valores: `female`, `male`, `unknown` — Obligatorio: no.
   - `breed` — Tipo: `VARCHAR(255)` — Obligatorio: no.
   - `size` — Tipo: ENUM/`VARCHAR(10)` — Valores: `small`, `medium`, `large` — Obligatorio: no.
-  - `activity_level` — Tipo: ENUM/`VARCHAR(10)` — Valores controlados (mismo vocabulario que `AdopterProfile`) — Obligatorio: no.
-  - `personality_traits` — Tipo: `JSONB` o `TEXT[]` — Obligatorio: no — Lista de rasgos (valores controlados).
+  - `activity_level` — Tipo: ENUM/`VARCHAR(10)` — Valores controlados (mismo vocabulario que `Person`).
+  - `personality_traits` — Tipo: `JSONB` o `TEXT[]` — Obligatorio: no — Rasgos (valores controlados) usados por el matching.
   - `good_with_children` — Tipo: `BOOLEAN` — Obligatorio: no.
   - `good_with_dogs` — Tipo: `BOOLEAN` — Obligatorio: no.
   - `vaccinated` — Tipo: `BOOLEAN` — Obligatorio: no.
   - `neutered` — Tipo: `BOOLEAN` — Obligatorio: no.
+  - `health_status` — Tipo: `TEXT` — Obligatorio: no — Notas sobre condiciones médicas relevantes o necesidades especiales (p.ej. tratamientos crónicos, limitaciones de movilidad, requisitos de cuidado).
   - `description` — Tipo: `TEXT` — Obligatorio: no.
-  - `image_urls` — Tipo: `JSONB` — Obligatorio: no — Lista de URLs.
-  - `location` — Tipo: `VARCHAR(255)` — Obligatorio: no.
+  - `image_urls` — Tipo: `JSONB` — Obligatorio: no — Lista de URLs de imágenes.
+  - `location` — Tipo: `VARCHAR(255)` — Obligatorio: no — Ciudad/estado o refugio.
   - `created_at`, `updated_at` — `TIMESTAMPTZ`.
-- Claves y relaciones:
-  - PK: `id`.
-  - Relación 1—N con `Favorite` (ver `Favorite.cat_id`).
-  - Relación 1—N con `Match` (ver `Match.cat_id`).
-- Restricciones importantes:
-  - Indexes para búsquedas por `age_stage`, `activity_level`, `location`.
-  - Validaciones en la aplicación para URLs en `image_urls`.
+- Relaciones:
+  - 1—N con `Match` (un Cat puede aparecer en muchos matches).
+  - 1—N con `AdoptionRequest` (un Cat puede recibir múltiples solicitudes).
+- Campos obligatorios / opcionales:
+  - Obligatorios: `id`, `name`, `age_stage`, `created_at`.
+  - Opcionales: resto (permite fichas mínimas para listar y hacer matching).
+- Información realmente necesaria para el matching:
+  - `activity_level`, `personality_traits`, `good_with_children`, `good_with_dogs`, `size`, `age_stage`, `health_status` y `location`.
 
 ---
 
-## Entidad: Favorite
-- Propósito: registrar los gatos marcados como favoritos por usuarios.
-- Atributos clave:
-  - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí.
-  - `user_id` — Tipo: `UUID` — Obligatorio: sí — FK → `User.id`.
-  - `cat_id` — Tipo: `UUID` — Obligatorio: sí — FK → `Cat.id`.
-  - `created_at` — Tipo: `TIMESTAMPTZ` — Obligatorio: sí — Default: `now()`.
-- Claves y relaciones:
-  - PK: `id`.
-  - FK: `user_id` → `User.id`; `cat_id` → `Cat.id`.
-  - Relación: User 1—N Favorite; Cat 1—N Favorite.
-- Restricciones importantes:
-  - Unique constraint opcional (`user_id`, `cat_id`) para impedir duplicados.
-  - Índices en `user_id` y `cat_id` para consultas rápidas.
-
----
-
-## Entidad: Match (ajustada)
-- Propósito: almacenar resultados/recomendaciones de compatibilidad generados por el componente AI (artefactos de matching).
-- Atributos clave (únicamente):
-  - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí.
-  - `adopter_profile_id` — Tipo: `UUID` — Obligatorio: sí — FK → `AdopterProfile.id`.
-  - `cat_id` — Tipo: `UUID` — Obligatorio: sí — FK → `Cat.id`.
-  - `compatibility_score` — Tipo: `NUMERIC(5,2)` o `SMALLINT`/`INT` — Obligatorio: sí — Representa porcentaje 0–100.
-  - `ai_explanation` — Tipo: `TEXT` — Obligatorio: no — Explicación comprensible (texto) de por qué se considera la compatibilidad.
+## Entidad: Match
+- Propósito: representar una evaluación de compatibilidad entre una `Person` y un `Cat`.
+- Diseño MVP recomendado:
+  - Opción A (no persistir inicialmente — cálculo al vuelo): calcular las compatibilidades cuando la UI/cliente lo solicite y devolver una lista ordenada por `compatibility_score`. No se requiere persistir Match en la DB para la primera fase; esto simplifica el esquema y evita duplicados/cachés innecesarios.
+  - Opción B (persistir opcionalmente): guardar `Match` sólo si se desea cachear resultados, auditar decisiones o mostrar historiales. Si se persiste, usar la estructura mínima descrita abajo.
+- Atributos (para la Opción B — persistida):
+  - `id` — Tipo: `UUID` — PK.
+  - `person_id` — Tipo: `UUID` — FK → `Person.id` — Obligatorio: sí.
+  - `cat_id` — Tipo: `UUID` — FK → `Cat.id` — Obligatorio: sí.
+  - `compatibility_score` — Tipo: `NUMERIC(5,2)` o `SMALLINT`/`INT` — Obligatorio: sí — Rango 0–100.
+  - `explanation` — Tipo: `TEXT` — Obligatorio: no — Texto humano-legible con razones (puede ser breve).
   - `created_at` — Tipo: `TIMESTAMPTZ` — Default: `now()`.
-- Claves y relaciones:
-  - PK: `id`.
-  - FK: `adopter_profile_id` → `AdopterProfile.id`.
-  - FK: `cat_id` → `Cat.id`.
-  - Relación: AdopterProfile 1—N Match; Cat 1—N Match.
-- Restricciones importantes:
-  - Check constraint en `compatibility_score` para asegurar 0 ≤ score ≤ 100.
-  - Índices (`adopter_profile_id`, `cat_id`) para búsquedas.
-  - Unique constraint opcional en (`adopter_profile_id`, `cat_id`) si se desea evitar duplicados por pareja.
+- Relaciones:
+  - `Person` 1—N `Match`.
+  - `Cat` 1—N `Match`.
+- Reglas y consideraciones:
+  - Si se opta por no persistir (recomendado inicialmente), implementar caching a nivel de servicio sólo si es necesario.
+  - Check constraint para `compatibility_score` (0 ≤ score ≤ 100) si se persiste.
+
+---
+
+## Entidad: AdoptionRequest
+- Propósito: representar la solicitud formal de adopción de un `Person` para un `Cat`.
+- Razonamiento MVP: dado que no hay cuentas, cada solicitud debe contener la información de contacto necesaria para que el refugio/proveedor contacte al solicitante; además puede vincularse al `Person` si existe un perfil previo.
+- Atributos principales:
+  - `id` — Tipo: `UUID` — PK.
+  - `person_id` — Tipo: `UUID` — FK → `Person.id` — Opcional: sí — Si la solicitud se hace desde un perfil existente, vincular; si no, puede permanecer NULL y la información de contacto se almacena en los campos siguientes.
+  - `cat_id` — Tipo: `UUID` — FK → `Cat.id` — Obligatorio: sí.
+  - `contact_email` — Tipo: `VARCHAR(255)` — Obligatorio: sí — Medio principal de contacto en la fase inicial.
+  - `contact_phone` — Tipo: `VARCHAR(50)` — Obligatorio: no — Opcional.
+  - `message` — Tipo: `TEXT` — Obligatorio: no — Mensaje libre del solicitante.
+  - `status` — Tipo: `VARCHAR(20)` o ENUM — Valores: `pending`, `contacted`, `rejected`, `accepted` — Default: `pending`.
+  - `created_at`, `updated_at` — `TIMESTAMPTZ`.
+- Relaciones:
+  - `Person` 1—N `AdoptionRequest`.
+  - `Cat` 1—N `AdoptionRequest`.
+- Campos obligatorios / opcionales:
+  - Obligatorios: `id`, `cat_id`, `contact_email`, `created_at`.
+  - Opcionales: `person_id`, `contact_phone`, `message`, `status` (tiene default).
+
+---
+
+## Observaciones sobre Favorite
+- Para el MVP principal (flujo de matching y solicitud de adopción) la funcionalidad de "favoritos" no es necesaria. Se puede dejar para una segunda tanda cuando haya cuentas y persistencia de preferencias.
+- Recomendación: no crear la entidad `Favorite` en la primera fase. Si se desea una opción de marcado rápido sin cuentas, es preferible implementar almacenamiento local en el cliente o una tabla temporal vinculada a `AdoptionRequest`/`Person` más adelante.
+
+---
+
+## Notas de migración del modelo previo
+- Se elimina la dependencia de `User`/cuentas en la primera fase: `Person` sustituye a `AdopterProfile` y existe de forma independiente.
+- `Match` se simplifica: se puede calcular al vuelo; si se persiste, usar la estructura mínima indicada.
+- `Favorite` queda fuera del MVP inicial.
+
+---
 
 ---
 

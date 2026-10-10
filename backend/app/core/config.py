@@ -1,13 +1,35 @@
-from pydantic import BaseSettings
+import pydantic as _pydantic
 
-class Settings(BaseSettings):
-    # DATABASE_URL should be provided via environment variables (.env or docker-compose)
-    # Leave empty by default to avoid hardcoding credentials in the repository.
-    DATABASE_URL: str = ""
-    env: str = "dev"
+try:
+    # pydantic v2: BaseSettings provided via pydantic-settings package
+    from pydantic_settings import BaseSettings
+    _using_pydantic_v2 = True
+except Exception:
+    # fallback for older environments where pydantic v1 is used
+    from pydantic import BaseSettings
+    _using_pydantic_v2 = False
 
-    class Config:
-        env_file = ".env"
+# Define Settings differently depending on pydantic major version to avoid
+# mixing `Config` and `model_config` which is invalid in pydantic v2.
+if _using_pydantic_v2:
+    class Settings(BaseSettings):
+        DATABASE_URL: str = ""
+        env: str = "dev"
+
+        # pydantic v2 style configuration
+        model_config = {
+            "extra": "ignore",
+            "env_file": ".env",
+        }
+else:
+    class Settings(BaseSettings):
+        DATABASE_URL: str = ""
+        env: str = "dev"
+
+        class Config:
+            env_file = ".env"
+            # allow other environment variables to exist without failing validation
+            extra = "ignore"
 
 settings = Settings()
 

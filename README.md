@@ -57,7 +57,7 @@ Entidades usadas en el MVP inicial:
 
 User y Favorites quedan fuera de la primera tanda y se introducirán en la segunda tanda cuando se implementen cuentas y gestión de usuarios.
 
-Ver el diseño detallado: docs/data_model_week1.md
+Ver el diseño detallado: docs/data_model.md
 
 7. Solicitud de adopción (flujo)
 
@@ -84,7 +84,7 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 
 10. Documentación
 
-- Modelo de datos y vocabularios: docs/data_model_week1.md
+- Modelo de datos y vocabularios: docs/data_model.md
 - Wireframes y guía UI: docs/wireframes.md
 
 ---

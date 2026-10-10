@@ -57,6 +57,15 @@ Entidades usadas en el MVP inicial:
 
 User y Favorites quedan fuera de la primera tanda y se introducirán en la segunda tanda cuando se implementen cuentas y gestión de usuarios.
 
+- **Person.time_outside — Tipo: `VARCHAR(100)` — Opcional**  
+  Campo cualitativo que describe el tiempo que la persona pasa fuera de casa (por ejemplo: «trabajo principalmente desde casa» o «paso gran parte del día fuera»). No implica que la vivienda quede vacía — puede haber otras personas en el hogar. No debe confundirse con `work_hours_per_day`, que es un dato numérico laboral independiente.
+
+- **Person.time_available — Tipo: `VARCHAR(100)` — Opcional**  
+  Campo cualitativo que describe el tiempo que la persona puede dedicar al gato (por ejemplo: «unas horas por la tarde», «mucho tiempo los fines de semana», «disponibilidad limitada»). Es conceptualmente independiente de `time_outside` y de `work_hours_per_day`: `time_available` describe la disponibilidad efectiva para cuidado e interacción con la mascota.
+
+- **Person.personality_traits — Tipo: `JSONB` — Opcional**  
+  Los rasgos de la persona se almacenan como JSONB. Consulta `docs/data_model.md` para conocer la documentación disponible sobre su estructura. Los criterios definitivos de compatibilidad y las reglas del matching siguen pendientes de definición.
+
 Ver el diseño detallado: docs/data_model.md
 
 7. Solicitud de adopción (flujo)
@@ -78,9 +87,15 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 
 9. Estado actual del desarrollo
 
-- El planteamiento funcional, el modelo de datos y los wireframes están definidos y documentados en `docs/`.
-- El desarrollo del stack objetivo (FastAPI + Next.js + TypeScript + PostgreSQL + Docker) está en curso. Algunas piezas aún deben implementarse; cuando estén disponibles se añadirán instrucciones concretas de ejecución y Docker compose.
-- Este README refleja la decisión técnica actual; no describe stacks antiguos ni instrucciones de scaffolds previos.
+- **Backend, dependencias y verificación mínima**
+  - El backend está implementado con FastAPI (Python).
+  - Las dependencias del backend deben instalarse desde `backend/requirements.txt`.
+  - Existe una prueba básica de humo que comprueba el endpoint `/health` mediante FastAPI TestClient. Esta prueba no verifica por sí sola la conexión con PostgreSQL ni el funcionamiento completo de la aplicación.
+  - Pendiente de preparar o verificar: el entorno de pruebas necesario para comprobar la conexión real con PostgreSQL, aplicar y validar las migraciones de Alembic y preparar o validar las pruebas de integración correspondientes.
+
+- **Funcionalidades pendientes**
+  - El matching definitivo, la autenticación y la integración RAG/IA todavía no están implementados en esta fase.
+
 
 10. Documentación
 

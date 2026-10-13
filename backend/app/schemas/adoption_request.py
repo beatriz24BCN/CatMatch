@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 
 class AdoptionRequestCreate(BaseModel):
     cat_id: UUID
@@ -9,6 +10,11 @@ class AdoptionRequestCreate(BaseModel):
 
 class AdoptionRequestRead(AdoptionRequestCreate):
     id: UUID
+    person_id: Optional[UUID]
+    contact_phone: Optional[str]
+    status: Optional[str]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
     class Config:
         orm_mode = True

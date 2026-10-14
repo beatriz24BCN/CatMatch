@@ -1,0 +1,71 @@
+import os
+import unittest
+from fastapi.testclient import TestClient
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
+from backend.app.main import app
+from backend.app.crud import cats as cats_crud
+from backend.app.services import matching as matching_service
+
+client = TestClient(app)
+
+class CatsForPersonTestCase(unittest.TestCase):
+    def setUp(self):
+        # keep originals
+        self._orig_list_cats = cats_crud.list_cats
+        self._orig_evaluate = matching_service.evaluate_match
+
+    def tearDown(self):
+        cats_crud.list_cats = self._orig_list_cats
+        matching_service.evaluate_match = self._orig_evaluate
+
+    def test_ordering_by_incompatibility_count(self):
+        # three cats
+        cats = [
+            {"id": "c1"},
+            {"id": "c2"},
+            {"id": "c3"},
+        ]
+        def fake_list_cats(db, limit=100, offset=0):
+            return cats
+        cats_crud.list_cats = fake_list_cats
+
+        # fake evaluate_match: c1 -> 2 incompatibilities, c2 -> 0, c3 -> 1
+        def fake_evaluate(person, cat):
+            cid = cat.get("id") if isinstance(cat, dict) else getattr(cat, "id", None)
+            if cid == "c1":
+                return {"recommended": False, "explanation": "", "factors": [{"match": False}, {"match": False}]}
+            if cid == "c2":
+                return {"recommended": None, "explanation": "", "factors": []}
+            return {"recommended": None, "explanation": "", "factors": [{"match": False}]}
+        matching_service.evaluate_match = fake_evaluate
+        # also patch the router-level evaluate_match reference
+        from backend.app.api import routers
+        routers.cats.evaluate_match = fake_evaluate
+
+        payload = {"person": {"id": "p1"}}
+        resp = client.post("/api/cats/for_person", json=payload)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # expected order: c2 (0), c3 (1), c1 (2)
+        ids = [item["cat"]["id"] for item in data]
+        self.assertEqual(ids, ["c2", "c3", "c1"])
+
+    def test_requires_person(self):
+        resp = client.post("/api/cats/for_person", json={})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_preserve_recommendation_field(self):
+        cats = [{"id": "c1"}]
+        cats_crud.list_cats = lambda db, limit=100, offset=0: cats
+        matching_service.evaluate_match = lambda p, c: {"recommended": False, "explanation": "x", "factors": [{"match": False}]}
+        from backend.app.api import routers
+        routers.cats.evaluate_match = matching_service.evaluate_match
+        resp = client.post("/api/cats/for_person", json={"person": {"id": "p1"}})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data[0]["match"]["recommended"], False)
+
+if __name__ == "__main__":
+    unittest.main()

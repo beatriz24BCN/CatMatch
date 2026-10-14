@@ -5,6 +5,6 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . /app
+COPY . /app/backend
 # Wait for Postgres service 'db' to be ready before starting the app using a Python loop
-CMD ["./entrypoint.sh"]
+CMD ["./backend/entrypoint.sh"]

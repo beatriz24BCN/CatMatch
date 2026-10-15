@@ -36,5 +36,71 @@ class MatchingServiceTestCase(unittest.TestCase):
         self.assertIsNone(result["recommended"])
         self.assertIsInstance(result["factors"], list)
 
+    def test_personality_overlap_with_jsonb(self):
+        # Person's preferred_cat_traits stored as a JSONB-like dict with weights
+        person = {"preferred_cat_traits": {"calm": 3, "affectionate": 2}}
+        cat = {"personality_traits": ["calm", "playful"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertTrue(len(overlap) == 1)
+        self.assertTrue(overlap[0]["details"]["overlap_count"] >= 1)
+
+    def test_personality_traits_as_list(self):
+        # person prefs as list
+        person = {"preferred_cat_traits": ["calm", "affectionate"]}
+        cat = {"personality_traits": ["calm", "playful"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 1)
+        self.assertGreaterEqual(overlap[0]["details"]["overlap_count"], 1)
+
+    def test_personality_traits_as_csv(self):
+        # person prefs as CSV string
+        person = {"preferred_cat_traits": "calm, affectionate"}
+        cat = {"personality_traits": ["calm", "playful"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 1)
+        self.assertGreaterEqual(overlap[0]["details"]["overlap_count"], 1)
+
+    def test_personality_traits_case_and_spaces(self):
+        # case and surrounding spaces
+        person = {"preferred_cat_traits": [" Calm ", "Affectionate"]}
+        cat = {"personality_traits": ["calm", "affectionate"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 1)
+        self.assertGreaterEqual(overlap[0]["details"]["overlap_count"], 2)
+
+    def test_personality_traits_none_or_empty(self):
+        # None values
+        person = {"preferred_cat_traits": None}
+        cat = {"personality_traits": ["calm"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        # personality_overlap factor should not be present when person_pref is None
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 0)
+
+        # empty lists
+        person = {"preferred_cat_traits": []}
+        cat = {"personality_traits": []}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 0)
+
+        # empty dict
+        person = {"preferred_cat_traits": {}}
+        cat = {"personality_traits": ["calm"]}
+        result = evaluate_match(person, cat)
+        self.assertIsNone(result["recommended"])
+        overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
+        self.assertEqual(len(overlap), 0)
+
 if __name__ == "__main__":
     unittest.main()

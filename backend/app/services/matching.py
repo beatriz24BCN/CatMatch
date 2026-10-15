@@ -106,8 +106,13 @@ def evaluate_match(person, cat):
     if person_pref and cat_traits:
         # accept lists or comma-separated strings
         def to_list(x):
+            # Accept lists, CSV strings, or dicts (JSONB with trait keys or trait->weight maps).
             if isinstance(x, list):
-                return [str(i).lower() for i in x]
+                # normalize list items (strip, lowercase)
+                return [str(i).strip().lower() for i in x if str(i).strip()]
+            if isinstance(x, dict):
+                # Treat dict keys as trait tokens, ignore numeric weights for overlap detection
+                return [str(k).strip().lower() for k in x.keys() if str(k).strip()]
             if isinstance(x, str):
                 return [s.strip().lower() for s in x.split(",") if s.strip()]
             return []

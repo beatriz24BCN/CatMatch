@@ -67,5 +67,26 @@ class CatsForPersonTestCase(unittest.TestCase):
         data = resp.json()
         self.assertEqual(data[0]["match"]["recommended"], False)
 
+    def test_factors_present_in_response(self):
+        cats = [{"id": "c1"}]
+        cats_crud.list_cats = lambda db, limit=100, offset=0: cats
+        # return a match with detailed factors
+        matching_service.evaluate_match = lambda p, c: {
+            "recommended": None,
+            "explanation": "No incompatibilities estructuradas.",
+            "factors": [
+                {"type": "location", "match": True, "explanation": "Ubicación igual", "details": {"person_location":"A","cat_location":"A"}},
+                {"type": "personality_overlap", "match": True, "explanation": "Coincidencia de rasgos", "details": {"overlap_count":1, "overlap_items":["calm"]}}
+            ]
+        }
+        from backend.app.api import routers
+        routers.cats.evaluate_match = matching_service.evaluate_match
+        resp = client.post("/api/cats/for_person", json={"person": {"id": "p1"}})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("factors", data[0]["match"])
+        self.assertIsInstance(data[0]["match"]["factors"], list)
+        self.assertGreaterEqual(len(data[0]["match"]["factors"]), 1)
+
 if __name__ == "__main__":
     unittest.main()

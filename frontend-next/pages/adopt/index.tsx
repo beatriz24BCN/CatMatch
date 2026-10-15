@@ -11,8 +11,8 @@ export default function AdoptIndex(){
         <h1>Adopta</h1>
         <p>Empieza el proceso creando tu perfil y luego revisa gatos sugeridos.</p>
         <div style={{display:'flex',gap:12}}>
-          <Link href="/adopt/profile"><a style={{padding:12,background:'#0070f3',color:'#fff',borderRadius:6}}>Crear perfil</a></Link>
-          <Link href="/adopt/results"><a style={{padding:12,background:'#6c757d',color:'#fff',borderRadius:6}}>Ver resultados (si ya tienes perfil)</a></Link>
+          <Link href="/adopt/profile" style={{padding:12,background:'#0070f3',color:'#fff',borderRadius:6}}>Crear perfil</Link>
+          <Link href="/adopt/results" style={{padding:12,background:'#6c757d',color:'#fff',borderRadius:6}}>Ver resultados (si ya tienes perfil)</Link>
         </div>
       </main>
     </div>

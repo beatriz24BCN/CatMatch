@@ -34,7 +34,7 @@ export default function CatDetail(){
                 <img src={cat.image_urls[0]} alt={cat.name} style={{maxWidth:'100%'}} />
               ) : <div style={{height:200,background:'#f4f4f4',display:'flex',alignItems:'center',justifyContent:'center'}}>No image</div>}
               <div style={{marginTop:8}}>
-                <Link href={`/adopt/cat/${id}/request`}><a style={{display:'inline-block',padding:10,background:'#28a745',color:'#fff',borderRadius:6}}>Solicitar adopción</a></Link>
+                <Link href={`/adopt/cat/${id}/request`} style={{display:'inline-block',padding:10,background:'#28a745',color:'#fff',borderRadius:6}}>Solicitar adopción</Link>
               </div>
             </div>
             <div>

@@ -221,3 +221,9 @@ frontend/dist-ssr/
 
 # Environment variables
 .env
+
+# Ignore Next.js build output (local artifacts)
+/frontend-next/.next/
+
+# Ignore TypeScript incremental build info
+*.tsbuildinfo

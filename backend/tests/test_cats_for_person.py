@@ -88,5 +88,99 @@ class CatsForPersonTestCase(unittest.TestCase):
         self.assertIsInstance(data[0]["match"]["factors"], list)
         self.assertGreaterEqual(len(data[0]["match"]["factors"]), 1)
 
+    def test_tiebreaker_positive_matches(self):
+        # three cats with equal incompatibility_count but different numbers of positive matches
+        cats = [
+            {"id": "a"},
+            {"id": "b"},
+            {"id": "c"},
+        ]
+        cats_crud.list_cats = lambda db, limit=100, offset=0: cats
+
+        def fake_eval(person, cat):
+            cid = cat.get("id") if isinstance(cat, dict) else getattr(cat, "id", None)
+            if cid == "a":
+                return {"recommended": None, "explanation": "", "factors": []}  # 0 positive
+            if cid == "b":
+                return {"recommended": None, "explanation": "", "factors": [{"match": True}]}  # 1 positive
+            return {"recommended": None, "explanation": "", "factors": [{"match": True}, {"match": True}]}  # 2 positives
+
+        matching_service.evaluate_match = fake_eval
+        from backend.app.api import routers
+        routers.cats.evaluate_match = fake_eval
+
+        resp = client.post("/api/cats/for_person", json={"person": {"id": "p1"}})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        ids = [item["cat"]["id"] for item in data]
+        # expect order: c (2 positives), b (1), a (0)
+        self.assertEqual(ids, ["c", "b", "a"])
+
+    def test_tiebreaker_overlap_count(self):
+        # two cats with same incompatibility_count and same positive_matches but different overlap_count
+        cats = [
+            {"id": "x"},
+            {"id": "y"},
+        ]
+        cats_crud.list_cats = lambda db, limit=100, offset=0: cats
+
+        def fake_eval(person, cat):
+            cid = cat.get("id") if isinstance(cat, dict) else getattr(cat, "id", None)
+            if cid == "x":
+                return {
+                    "recommended": None,
+                    "explanation": "",
+                    "factors": [
+                        {"match": True},
+                        {"type": "personality_overlap", "match": True, "details": {"overlap_count": 2}}
+                    ]
+                }
+            return {
+                "recommended": None,
+                "explanation": "",
+                "factors": [
+                    {"match": True},
+                    {"type": "personality_overlap", "match": True, "details": {"overlap_count": 1}}
+                ]
+            }
+
+        matching_service.evaluate_match = fake_eval
+        from backend.app.api import routers
+        routers.cats.evaluate_match = fake_eval
+
+        resp = client.post("/api/cats/for_person", json={"person": {"id": "p1"}})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        ids = [item["cat"]["id"] for item in data]
+        # expect x (overlap 2) before y (overlap 1)
+        self.assertEqual(ids, ["x", "y"])
+
+    def test_missing_overlap_counts_treated_as_zero(self):
+        # if overlap_count is missing or invalid it is treated as 0 — a cat with a positive overlap_count should rank before one with missing/zero overlap
+        cats = [
+            {"id": "m"},
+            {"id": "n"},
+        ]
+        cats_crud.list_cats = lambda db, limit=100, offset=0: cats
+
+        def fake_eval(person, cat):
+            cid = cat.get("id")
+            if cid == "m":
+                # both have one generic positive factor plus a personality_overlap with no overlap_count
+                return {"recommended": None, "explanation": "", "factors": [{"match": True}, {"type": "personality_overlap", "match": True, "details": {}}]}
+            # same number of positive factors but with an explicit overlap_count
+            return {"recommended": None, "explanation": "", "factors": [{"match": True}, {"type": "personality_overlap", "match": True, "details": {"overlap_count": 1}}]}
+
+        matching_service.evaluate_match = fake_eval
+        from backend.app.api import routers
+        routers.cats.evaluate_match = fake_eval
+
+        resp = client.post("/api/cats/for_person", json={"person": {"id": "p1"}})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        ids = [item["cat"]["id"] for item in data]
+        # expect n (overlap_count 1) before m (overlap_count missing treated as 0)
+        self.assertEqual(ids, ["n", "m"])
+
 if __name__ == "__main__":
     unittest.main()

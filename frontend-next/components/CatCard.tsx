@@ -31,6 +31,95 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
 
   const visibleCount = expanded ? ordered.length : Math.min(3, ordered.length);
 
+  const toYesNo = (v:any)=>{
+    if (v === true || String(v) === 'True' || String(v) === 'true') return 'Sí';
+    if (v === false || String(v) === 'False' || String(v) === 'false') return 'No';
+    return String(v);
+  }
+
+  const detailLabel = (k:string) => {
+    const map: Record<string,string> = {
+      person_location: 'Tu ubicación',
+      cat_location: 'Ubicación del gato',
+      person_has_children: 'Tienes niños',
+      cat_good_with_children: 'Gato apto con niños',
+      person_has_other_pets: 'Tienes otras mascotas',
+      cat_good_with_dogs: 'Gato apto con otras mascotas',
+      person_activity: 'Tu nivel de actividad',
+      cat_activity: 'Nivel de actividad del gato',
+      overlap_count: 'Coincidencias',
+      overlap_items: 'Rasgos en común',
+      cat_health_status: 'Estado de salud',
+    };
+    return map[k] || k.replace(/_/g,' ');
+  }
+
+  function renderFactorMessage(f:any){
+    const details = f?.details || {};
+    const t = f?.type;
+    // Good with children
+    if(t === 'good_with_children'){
+      const personHas = details.person_has_children;
+      const catOk = details.cat_good_with_children;
+      if(f.match === false){
+        if(personHas) return 'No recomendado: este gato no es apto con niños y has indicado que tienes niños en casa.';
+        return 'No recomendado para hogares con niños.';
+      }
+      if(f.match === true) return 'Apto con niños.';
+      return f.explanation || 'Compatibilidad con niños: información no concluyente.';
+    }
+
+    if(t === 'good_with_other_pets'){
+      const personHas = details.person_has_other_pets;
+      const catOk = details.cat_good_with_dogs;
+      if(f.match === false){
+        if(personHas) return 'No recomendado: este gato no es apto con otras mascotas y has indicado que tienes mascotas.';
+        return 'No recomendado para hogares con otras mascotas.';
+      }
+      if(f.match === true) return 'Apto con otras mascotas.';
+      return f.explanation || 'Compatibilidad con otras mascotas: información no concluyente.';
+    }
+
+    if(t === 'activity_level'){
+      const p = details.person_activity;
+      const c = details.cat_activity;
+      if(p && c){
+        if(f.match === true) return `Nivel de actividad compatible: ${String(p)}.`;
+        return `Tu nivel: ${String(p)} · Gato: ${String(c)}. Pueden no encajar en estilo de vida.`;
+      }
+      return f.explanation || 'Nivel de actividad: información insuficiente.';
+    }
+
+    if(t === 'location'){
+      const p = details.person_location;
+      const c = details.cat_location;
+      if(p && c){
+        if(f.match === true) return `Localización igual: ${String(p)}.`;
+        return `Localización distinta: tú en ${String(p)} · Gato en ${String(c)}.`;
+      }
+      return f.explanation || 'Localización: información insuficiente.';
+    }
+
+    if(t === 'personality_overlap'){
+      const overlap = Number(details?.overlap_count || 0);
+      const items = details?.overlap_items || [];
+      if(overlap > 0){
+        const list = Array.isArray(items) ? items.join(', ') : String(items);
+        return `Coincidencias: ${list} (${overlap} rasgo${overlap>1?'s':''}).`;
+      }
+      return 'Sin rasgos preferidos que coincidan.';
+    }
+
+    if(t === 'health_status'){
+      const hs = details?.cat_health_status || details?.health_status;
+      if(hs) return `Estado de salud: ${String(hs)}`;
+      return f.explanation || 'Estado de salud: información disponible.';
+    }
+
+    // default fallback
+    return f.explanation || '';
+  }
+
   return (
     <article aria-label={`Ficha resumen del gato ${cat?.name || 'sin nombre'}`} style={{border:'1px solid #ddd',padding:12,borderRadius:6,display:'flex',gap:12,flexDirection: isSmall ? 'column' : 'row'}}>
       <div style={{width: isSmall ? '100%':140,height:100,background:'#f4f4f4',display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -68,13 +157,13 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
                       {f.match === false ? 'Incompatibilidad' : f.match === true ? 'Compatible' : 'Informativo'}
                     </div>
                   </div>
-                  <div style={{fontSize:12,color:'#333',marginTop:6}}>{f.explanation}</div>
+                  <div style={{fontSize:12,color:'#333',marginTop:6}}>{renderFactorMessage(f)}</div>
                   {f.details && Object.keys(f.details).length > 0 && (
                     <details style={{marginTop:6,fontSize:11,color:'#555'}}>
                       <summary style={{cursor:'pointer'}}>Detalles</summary>
                       <div style={{marginTop:6}}>
                         {Object.entries(f.details).map(([k,v]) => (
-                          <div key={k}><strong style={{textTransform:'none'}}>{k}:</strong> {String(v)}</div>
+                          <div key={k}><strong style={{textTransform:'none'}}>{detailLabel(k)}:</strong> {Array.isArray(v) ? v.join(', ') : (typeof v === 'boolean' ? toYesNo(v) : String(v))}</div>
                         ))}
                       </div>
                     </details>

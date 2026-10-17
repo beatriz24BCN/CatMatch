@@ -99,6 +99,43 @@ def list_cats_for_person(payload: Dict[str, Any], db=Depends(get_db)):
             cat_serialized = dict(cat) if isinstance(cat, dict) else {"id": getattr(cat, "id", None)}
         results.append({"cat": cat_serialized, "match": match_result, "incompatibility_count": incompatibility_count})
 
-    # sort by incompatibility_count ascending
-    results.sort(key=lambda x: x.get("incompatibility_count", 0))
+    # sort by incompatibility_count ascending; tie-break by positive matches (desc) and personality overlap (desc)
+    def _positive_and_overlap(match_obj: Optional[Dict[str, Any]]):
+        """Return (positive_matches_count, overlap_count) safely from a match object.
+
+        - positive_matches_count: number of factors with match is True
+        - overlap_count: integer from personality_overlap.details.overlap_count or 0
+        """
+        factors = match_obj.get("factors", []) if isinstance(match_obj, dict) else []
+        positive = 0
+        overlap = 0
+        for f in factors:
+            try:
+                if f.get("match") is True:
+                    positive += 1
+                if f.get("type") == "personality_overlap":
+                    details = f.get("details") or {}
+                    val = details.get("overlap_count") if isinstance(details, dict) else None
+                    if val is None:
+                        continue
+                    try:
+                        overlap = int(val)
+                    except Exception:
+                        # ignore invalid overlap_count values
+                        overlap = 0
+            except Exception:
+                # be defensive: ignore malformed factor entries
+                continue
+        return positive, overlap
+
+    # compute sort keys once per item to avoid repeated extraction
+    keyed = []
+    for item in results:
+        match_obj = item.get("match", {}) or {}
+        positive, overlap = _positive_and_overlap(match_obj)
+        key = (item.get("incompatibility_count", 0), -positive, -overlap)
+        keyed.append((key, item))
+
+    keyed.sort(key=lambda x: x[0])
+    results = [it for _, it in keyed]
     return results

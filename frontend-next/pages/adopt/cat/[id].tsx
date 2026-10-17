@@ -43,7 +43,16 @@ export default function CatDetail(){
               <dl>
                 <dt>Edad</dt><dd>{cat.age_stage} {cat.age_months ? `(${cat.age_months} meses)` : ''}</dd>
                 <dt>Localización</dt><dd>{cat.location}</dd>
-                <dt>Rasgos</dt><dd>{cat.personality_traits ? JSON.stringify(cat.personality_traits) : '—'}</dd>
+                <dt>Rasgos</dt><dd>{
+                  // Render personality_traits defensively and friendly
+                  (()=>{
+                    const pt = cat.personality_traits;
+                    if(!pt) return '—';
+                    if(Array.isArray(pt)) return pt.join(', ');
+                    if(typeof pt === 'object') return Object.keys(pt).join(', ');
+                    return String(pt);
+                  })()
+                }</dd>
               </dl>
             </div>
           </div>

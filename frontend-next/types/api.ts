@@ -52,3 +52,15 @@ export interface MatchEvaluateRequest {
 }
 
 export type MatchEvaluateResponse = MatchResult;
+
+export interface AdoptionRequestRead {
+  id: string;
+  cat_id: string;
+  person_id?: string | null;
+  contact_email: string;
+  contact_phone?: string | null;
+  message?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}

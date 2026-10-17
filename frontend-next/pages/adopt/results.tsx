@@ -11,18 +11,21 @@ export default function Results(){
   const [err,setErr] = useState<string | null>(null);
   const [results,setResults] = useState<any[]>([]);
 
+  async function loadResults(person_id?: string){
+    setLoading(true); setErr(null);
+    if(!person_id){ setErr('No hay perfil. Crea tu perfil primero.'); setLoading(false); return; }
+    try{
+      const data = await listCatsForPerson({ person_id });
+      setResults(data);
+    }catch(e:any){
+      const detail = e?.body?.detail || e?.message || 'Error al obtener resultados';
+      setErr(detail);
+    }finally{ setLoading(false); }
+  }
+
   useEffect(()=>{
-    async function load(){
-      setLoading(true); setErr(null);
-      const person_id = (router.query.person_id as string) || (typeof window !== 'undefined' && localStorage.getItem('catmatch_person_id'));
-      if(!person_id){ setErr('No hay perfil. Crea tu perfil primero.'); setLoading(false); return; }
-      try{
-        const data = await listCatsForPerson({ person_id });
-        setResults(data);
-      }catch(e:any){ setErr(e?.message || 'Error al obtener resultados'); }
-      setLoading(false);
-    }
-    load();
+    const person_id = (router.query.person_id as string) || (typeof window !== 'undefined' && localStorage.getItem('catmatch_person_id'));
+    loadResults(person_id as string);
   },[router.query.person_id]);
 
   return (
@@ -31,8 +34,18 @@ export default function Results(){
       <Navbar />
       <main style={{padding:20}}>
         <h1>Gatos sugeridos</h1>
-        {loading && <div>Cargando...</div>}
-        {err && <div style={{color:'red'}}>{err}</div>}
+        {loading && <div role="status" aria-live="polite">Cargando...</div>}
+        {err && (
+          <div style={{color:'red'}} role="alert">
+            <div>{err}</div>
+            <div style={{marginTop:8}}>
+              <button onClick={()=>{
+                const person_id = (router.query.person_id as string) || (typeof window !== 'undefined' && localStorage.getItem('catmatch_person_id'));
+                loadResults(person_id as string);
+              }}>Reintentar</button>
+            </div>
+          </div>
+        )}
         {!loading && !err && results.length===0 && (
           <div>
             <p>No se han encontrado gatos para tu perfil.</p>

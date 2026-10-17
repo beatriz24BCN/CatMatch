@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CatsForPersonItem } from '../types/api';
 
 function prettyName(type: string){
@@ -10,6 +10,16 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
   const cat = item.cat as any;
   const match = item.match;
   const [expanded, setExpanded] = useState(false);
+  const [isSmall, setIsSmall] = useState(false);
+
+  useEffect(()=>{
+    if(typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width:720px)');
+    const handler = (ev:any)=> setIsSmall(ev.matches);
+    setIsSmall(mq.matches);
+    mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler);
+    return ()=>{ mq.removeEventListener ? mq.removeEventListener('change', handler) : mq.removeListener(handler); };
+  },[]);
 
   const factors = Array.isArray(match?.factors) ? match.factors : [];
   // order: negatives first, then positives, then unknown/informational
@@ -22,8 +32,8 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
   const visibleCount = expanded ? ordered.length : Math.min(3, ordered.length);
 
   return (
-    <article style={{border:'1px solid #ddd',padding:12,borderRadius:6,display:'flex',gap:12}}>
-      <div style={{width:140,height:100,background:'#f4f4f4',display:'flex',alignItems:'center',justifyContent:'center'}}>
+    <article aria-label={`Ficha resumen del gato ${cat?.name || 'sin nombre'}`} style={{border:'1px solid #ddd',padding:12,borderRadius:6,display:'flex',gap:12,flexDirection: isSmall ? 'column' : 'row'}}>
+      <div style={{width: isSmall ? '100%':140,height:100,background:'#f4f4f4',display:'flex',alignItems:'center',justifyContent:'center'}}>
         {cat.image_urls && Array.isArray(cat.image_urls) && cat.image_urls[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cat.image_urls[0]} alt={cat.name || 'cat'} style={{maxWidth:'100%',maxHeight:'100%'}} />
@@ -31,13 +41,19 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
       </div>
       <div style={{flex:1}}>
         <h3 style={{margin:'0 0 8px 0'}}>{cat.name || 'Sin nombre'}</h3>
-        <p style={{margin:'0 0 8px 0',color:'#333'}}>{cat.description || ''}</p>
+        <div style={{margin:'0 0 8px 0',color:'#333'}}>
+          <div style={{fontSize:13}}>{cat.description || ''}</div>
+          <div style={{fontSize:12,color:'#666',marginTop:6}}>
+            {cat.location ? <span>📍 {cat.location} </span> : null}
+            {cat.age_stage ? <span style={{marginLeft:8}}>· {cat.age_stage}{cat.age_months ? ` (${cat.age_months} meses)` : ''}</span> : null}
+          </div>
+        </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <Link href={`/adopt/cat/${cat.id}`} style={{padding:'6px 10px',background:'#0070f3',color:'#fff',borderRadius:4}}>Ver ficha</Link>
-          <Link href={`/adopt/cat/${cat.id}/request`} style={{padding:'6px 10px',background:'#28a745',color:'#fff',borderRadius:4}}>Solicitar adopción</Link>
+          <Link href={`/adopt/cat/${cat.id}`} style={{padding:'6px 10px',background:'#0070f3',color:'#fff',borderRadius:4}} aria-label={`Ver ficha de ${cat.name || 'gato'}`}>Ver ficha</Link>
+          <Link href={`/adopt/cat/${cat.id}/request`} style={{padding:'6px 10px',background:'#28a745',color:'#fff',borderRadius:4}} aria-label={`Solicitar adopción de ${cat.name || 'gato'}`}>Solicitar adopción</Link>
         </div>
       </div>
-      <aside style={{width:320}}>
+      <aside style={{width: isSmall ? '100%' : 320, marginTop: isSmall ? 12 : 0}}>
         <strong>Match</strong>
         <div style={{fontSize:13,marginTop:6}}>
           <div style={{marginBottom:8,color:'#222',lineHeight:1.3}}>{match?.explanation}</div>

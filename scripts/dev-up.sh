@@ -13,14 +13,23 @@ die() { echo "[dev-up] ERROR: $*" >&2; exit 1; }
 
 # Starts an existing container if it is not running. Never creates or removes containers.
 ensure_container() {
-  local c="$1" status
+  local c="$1" status start_err
   docker ps -a --format '{{.Names}}' | grep -xq "$c" \
     || die "container $c not present. It will NOT be created automatically. See docs/DEV_ENVIRONMENT.md"
   status=$(docker inspect -f '{{.State.Status}}' "$c")
   echo "  - $c: $status"
   case "$status" in
     running) ;;
-    exited|created) echo "    -> starting $c"; docker start "$c" >/dev/null || die "could not start $c" ;;
+    exited|created)
+      echo "    -> starting $c"
+      if ! start_err=$(docker start "$c" 2>&1); then
+        if echo "$start_err" | grep -qi "RWLayer.*is unexpectedly nil"; then
+          die "could not start $c: Docker storage error (RWLayer is unexpectedly nil). The container write layer was corrupted by a daemon restart. Do NOT recreate automatically. See docs/CATMATCH_RECOVERY.md"
+        else
+          die "could not start $c: $start_err"
+        fi
+      fi
+      ;;
     paused) echo "    -> unpausing $c"; docker unpause "$c" >/dev/null || die "could not unpause $c" ;;
     *) die "$c is in unexpected state '$status'" ;;
   esac
@@ -63,7 +72,8 @@ else
   echo "  - Next dev not running. Starting it in background; /api/* is proxied to the backend by next.config.js"
   [ -d "$NEXT_DIR" ] || die "frontend directory missing: $NEXT_DIR"
   # NEXT_PUBLIC_API_BASE must stay unset so the browser calls its own origin (/api/...)
-  (cd "$NEXT_DIR" && env -u NEXT_PUBLIC_API_BASE npm run dev > /tmp/catmatch-next.log 2>&1 & echo $! > /tmp/catmatch-next.pid)
+  # nohup with stdin/stdout/stderr redirected decouples Next from caller pipeline and terminal session
+  (cd "$NEXT_DIR" && nohup env -u NEXT_PUBLIC_API_BASE npm run dev </dev/null > /tmp/catmatch-next.log 2>&1 & echo $! > /tmp/catmatch-next.pid)
   for _ in $(seq 1 30); do
     curl -sS --max-time 3 -o /dev/null http://127.0.0.1:3000/ 2>/dev/null && break
     sleep 1

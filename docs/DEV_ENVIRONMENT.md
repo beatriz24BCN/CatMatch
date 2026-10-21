@@ -14,8 +14,9 @@ Overview
 Scripts
 -------
 Helper scripts in scripts/ (full procedure: docs/CATMATCH_RECOVERY.md):
+- compose.codespaces.yml — declarative Compose specification of the current running environment (external catmatch-net and catmatch_pgdata). Reference specification; not automatically run with 'up -d' while existing containers are healthy.
 - scripts/dev-up.sh  — idempotent starter: starts existing PostgreSQL and backend containers (docker start, never recreates),
-  applies the container network rule via scripts/fix-docker-net.sh, waits for PostgreSQL and launches Next dev if port 3000 is free.
+  applies the container network rule via scripts/fix-docker-net.sh, waits for PostgreSQL and launches Next dev if port 3000 is free (decoupled with nohup).
   It finishes by running dev-check.sh.
 - scripts/dev-check.sh — read-only checks: network rule, PostgreSQL, backend /health, GET /api/cats/ (backend and through the Next proxy), frontend.
 - scripts/fix-docker-net.sh — adds the temporary iptables-legacy DOCKER-USER rule for catmatch-net if missing (--check only reports).

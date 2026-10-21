@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: catmatch-db-recover
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-catmatch}
+    ports:
+      - "5432:5432"
+    volumes:
+      - catmatch_pgdata:/var/lib/postgresql/data
+    networks:
+      catmatch-net:
+        aliases:
+          - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-catmatch}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: catmatch-backend:latest
+    container_name: catmatch-backend-perm
+    restart: unless-stopped
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-catmatch}}
+      PYTHONPATH: /src
+    ports:
+      - "8001:8000"
+    volumes:
+      - /workspaces/CatMatch:/src:ro
+    networks:
+      - catmatch-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  catmatch-net:
+    external: true
+
+volumes:
+  catmatch_pgdata:
+    external: true

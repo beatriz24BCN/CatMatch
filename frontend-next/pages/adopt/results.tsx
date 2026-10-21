@@ -1,7 +1,9 @@
-import Head from 'next/head';
-import Navbar from '../../components/Navbar';
+import Layout from '../../components/Layout';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { CatSilhouette } from '../../components/icons';
 import { listCatsForPerson } from '../../lib/api';
+import { formatApiError } from '../../lib/formatError';
 import CatCard from '../../components/CatCard';
 import { useRouter } from 'next/router';
 
@@ -18,8 +20,7 @@ export default function Results(){
       const data = await listCatsForPerson({ person_id });
       setResults(data);
     }catch(e:any){
-      const detail = e?.body?.detail || e?.message || 'Error al obtener resultados';
-      setErr(detail);
+      setErr(formatApiError(e, 'Error al obtener resultados'));
     }finally{ setLoading(false); }
   }
 
@@ -29,33 +30,35 @@ export default function Results(){
   },[router.query.person_id]);
 
   return (
-    <div>
-      <Head><title>Resultados — CatMatch</title></Head>
-      <Navbar />
-      <main style={{padding:20}}>
-        <h1>Gatos sugeridos</h1>
-        {loading && <div role="status" aria-live="polite">Cargando...</div>}
+    <Layout title="Tus gatos compatibles">
+      <div className="container page">
+        <h1>Gatos sugeridos para ti</h1>
+        <p className="lead" style={{marginBottom:20}}>Ordenados de menos a más incompatibilidades detectadas. Cada gato incluye por qué encaja o no contigo.</p>
+        {loading && <div className="loading" role="status" aria-live="polite"><span className="spinner" />Calculando tus resultados…</div>}
         {err && (
-          <div style={{color:'red'}} role="alert">
+          <div className="alert alert-error" role="alert">
             <div>{err}</div>
-            <div style={{marginTop:8}}>
-              <button onClick={()=>{
+            <div className="btn-row" style={{marginTop:10}}>
+              <button className="btn btn-secondary btn-sm" onClick={()=>{
                 const person_id = (router.query.person_id as string) || (typeof window !== 'undefined' && localStorage.getItem('catmatch_person_id'));
                 loadResults(person_id as string);
               }}>Reintentar</button>
+              <Link href="/adopt/profile" className="btn btn-ghost btn-sm">Crear o editar mi perfil</Link>
             </div>
           </div>
         )}
         {!loading && !err && results.length===0 && (
-          <div>
-            <p>No se han encontrado gatos para tu perfil.</p>
-            <p><a href="/adopt/profile">Volver a editar perfil</a> o <a href="/adopt">ir a Adopta</a>.</p>
+          <div className="empty">
+            <CatSilhouette className="empty-icon" />
+            <h3>Todavía no hay gatos para mostrar</h3>
+            <p>No hemos encontrado gatos disponibles para tu perfil. Vuelve pronto o revisa tu perfil.</p>
+            <Link href="/adopt/profile" className="btn btn-secondary">Revisar mi perfil</Link>
           </div>
         )}
-        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:12}}>
-          {results.map((r,i)=>(<CatCard key={i} item={r} />))}
+        <div style={{display:'grid',gap:16}}>
+          {results.map((r,i)=>(<CatCard key={r?.cat?.id || i} item={r} />))}
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

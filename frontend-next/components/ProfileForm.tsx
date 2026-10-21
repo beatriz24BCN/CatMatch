@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPerson } from '../lib/api';
+import { formatApiError } from '../lib/formatError';
 import { useRouter } from 'next/router';
 
 const DRAFT_KEY = 'catmatch_profile_draft';
@@ -10,6 +11,7 @@ export default function ProfileForm(){
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [traitsText, setTraitsText] = useState('');
   const [form, setForm] = useState<any>({
     full_name: '',
     location: '',
@@ -29,6 +31,7 @@ export default function ProfileForm(){
         const parsed = JSON.parse(raw);
         if(parsed && typeof parsed === 'object'){
           setForm((s:any)=>({...s, ...parsed}));
+          if(Array.isArray(parsed.preferred_cat_traits)) setTraitsText(parsed.preferred_cat_traits.join(', '));
         }
       }
     }catch(e){
@@ -81,7 +84,7 @@ export default function ProfileForm(){
     if(s === 3){
       // activity_level should be from allowed vocab
       if(!ALLOWED_ACTIVITY.includes(form.activity_level)){
-        setError('Selecciona un nivel de actividad válido. Opciones: low, medium, high, very_high.');
+        setError('Selecciona un nivel de actividad válido: bajo, medio, alto o muy alto.');
         return false;
       }
     }
@@ -107,7 +110,15 @@ export default function ProfileForm(){
 
     setLoading(true); setError(null);
     try{
-      const payload = {...form};
+      // The API schema requires every field to be present (nullable); send null for those the form does not collect
+      const payload = {
+        bio: null, home_type: null, home_size: null, has_outdoor_space: null,
+        work_hours_per_day: null, other_pets_details: null, personality_traits: null,
+        ...form,
+        time_available: form.time_available || null,
+        time_outside: form.time_outside || null,
+        activity_level: form.activity_level || null,
+      };
       const created = await createPerson(payload);
       if(created && (created as any).id){
         try{ localStorage.setItem('catmatch_person_id',(created as any).id); }catch(e){ console.warn('Could not save person id', e); }
@@ -119,69 +130,138 @@ export default function ProfileForm(){
       }
     }catch(e:any){
       // Prefer detailed error from API body if available
-      const detail = e?.body?.detail || e?.body?.message || e?.message;
-      setError(detail || 'Error al crear el perfil');
+      setError(formatApiError(e, 'Error al crear el perfil'));
     }finally{ setLoading(false); }
   }
 
   return (
-    <div style={{maxWidth:720,margin:'0 auto',padding:16}}>
-      <h2>Crear perfil (paso {step} de 4)</h2>
+    <div className="card form-card">
+      <h2>Paso {step} de 4</h2>
+      <ol className="stepper" aria-hidden="true">
+        {[1,2,3,4].map(n=>(<li key={n} className={n<=step?'done':''} />))}
+      </ol>
       <div style={{marginBottom:12}}>
         {step===1 && (
           <div>
-            <label htmlFor="full_name">Nombre completo</label><br/>
-            <input id="full_name" aria-label="Nombre completo" value={form.full_name} onChange={e=>update('full_name', e.target.value)} style={{width:'100%'}} />
-
-            <label htmlFor="location">Ubicación</label><br/>
-            <input id="location" aria-required="true" aria-label="Ubicación" value={form.location} onChange={e=>update('location', e.target.value)} style={{width:'100%'}} />
+            <div className="field">
+              <label htmlFor="full_name">Nombre completo</label>
+              <input id="full_name" type="text" autoComplete="name" value={form.full_name} onChange={e=>update('full_name', e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="location">Ubicación (obligatorio)</label>
+              <input id="location" type="text" aria-required="true" autoComplete="address-level2" placeholder="Ej: Barcelona" value={form.location} onChange={e=>update('location', e.target.value)} />
+            </div>
           </div>
         )}
         {step===2 && (
           <div>
-            <label htmlFor="has_children">¿Tiene niños?</label><br/>
-            <select id="has_children" value={form.has_children? 'yes':'no'} onChange={e=>update('has_children', e.target.value)} aria-label="Tiene niños">
-              <option value='no'>No</option>
-              <option value='yes'>Sí</option>
-            </select>
-
-            <br/>
-            <label htmlFor="has_other_pets">¿Tiene otras mascotas?</label><br/>
-            <select id="has_other_pets" value={form.has_other_pets? 'yes':'no'} onChange={e=>update('has_other_pets', e.target.value)} aria-label="Tiene otras mascotas">
-              <option value='no'>No</option>
-              <option value='yes'>Sí</option>
-            </select>
+            <div className="field">
+              <label htmlFor="has_children">¿Tienes niños en casa?</label>
+              <select id="has_children" value={form.has_children? 'yes':'no'} onChange={e=>update('has_children', e.target.value)}>
+                <option value='no'>No</option>
+                <option value='yes'>Sí</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="has_other_pets">¿Tienes otras mascotas?</label>
+              <select id="has_other_pets" value={form.has_other_pets? 'yes':'no'} onChange={e=>update('has_other_pets', e.target.value)}>
+                <option value='no'>No</option>
+                <option value='yes'>Sí</option>
+              </select>
+            </div>
           </div>
         )}
         {step===3 && (
           <div>
-            <label htmlFor="activity_level">Nivel de actividad</label><br/>
-            <select id="activity_level" value={form.activity_level} onChange={e=>update('activity_level', e.target.value)} style={{width:'100%'}} aria-label="Nivel de actividad">
-              <option value=''>Selecciona nivel</option>
-              <option value='low'>Low</option>
-              <option value='medium'>Medium</option>
-              <option value='high'>High</option>
-              <option value='very_high'>Very high</option>
-            </select>
-
-            <label htmlFor="preferred_cat_traits">Preferencias de rasgos (coma-separados)</label><br/>
-            <input id="preferred_cat_traits" value={Array.isArray(form.preferred_cat_traits)? form.preferred_cat_traits.join(', '): form.preferred_cat_traits} onChange={e=>update('preferred_cat_traits', e.target.value)} style={{width:'100%'}} placeholder='Ej: sociable, calm, playful' aria-label="Preferencias de rasgos" />
+            <div className="field">
+              <label htmlFor="activity_level">Nivel de actividad</label>
+              <select id="activity_level" value={form.activity_level} onChange={e=>update('activity_level', e.target.value)}>
+                <option value=''>Selecciona un nivel</option>
+                <option value='low'>Bajo</option>
+                <option value='medium'>Medio</option>
+                <option value='high'>Alto</option>
+                <option value='very_high'>Muy alto</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="preferred_cat_traits">Rasgos que buscas en un gato (opcional)</label>
+              <input id="preferred_cat_traits" type="text" value={traitsText} onChange={e=>{ setTraitsText(e.target.value); update('preferred_cat_traits', e.target.value); }} placeholder='Ej: sociable, calm, playful' />
+              <span className="hint">Sepáralos con comas.</span>
+            </div>
+            <div className="field">
+              <label htmlFor="time_available">Tiempo que puedes dedicarle (opcional)</label>
+              <input id="time_available" type="text" maxLength={100} placeholder="Ej: unas horas por la tarde" value={form.time_available} onChange={e=>update('time_available', e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="time_outside">Tiempo que pasas fuera de casa (opcional)</label>
+              <input id="time_outside" type="text" maxLength={100} placeholder="Ej: trabajo desde casa" value={form.time_outside} onChange={e=>update('time_outside', e.target.value)} />
+            </div>
           </div>
         )}
         {step===4 && (
           <div>
             <h4>Revisar</h4>
-            <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(form,null,2)}</pre>
+
+            <section aria-labelledby="review-personal" className="review-section">
+              <h5 id="review-personal" style={{margin:'0 0 8px 0'}}>1. Datos personales</h5>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <div><strong>Nombre completo:</strong> {form.full_name ? form.full_name : '—'}</div>
+                <div><strong>Ubicación:</strong> {form.location ? form.location : '—'}</div>
+              </div>
+            </section>
+
+            <section aria-labelledby="review-home" className="review-section">
+              <h5 id="review-home" style={{margin:'0 0 8px 0'}}>2. Tu hogar</h5>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <div><strong>¿Tienes niños?</strong> {form.has_children ? 'Sí' : 'No'}</div>
+                <div><strong>¿Tienes otras mascotas?</strong> {form.has_other_pets ? 'Sí' : 'No'}</div>
+              </div>
+            </section>
+
+            <section aria-labelledby="review-prefs" className="review-section">
+              <h5 id="review-prefs" style={{margin:'0 0 8px 0'}}>3. Preferencias</h5>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <div><strong>Nivel de actividad:</strong> {({
+                  low: 'Bajo',
+                  medium: 'Medio',
+                  high: 'Alto',
+                  very_high: 'Muy alto'
+                } as any)[form.activity_level] || 'No especificado'}</div>
+
+                <div>
+                  <strong>Rasgos preferidos:</strong>{' '}
+                  {Array.isArray(form.preferred_cat_traits) && form.preferred_cat_traits.length > 0 ? (
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
+                      {form.preferred_cat_traits.map((t:any, idx:number)=> (
+                        <span key={idx} className="chip">{String(t)}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{marginLeft:6}}>Sin preferencias específicas</span>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section aria-labelledby="review-availability" className="review-section">
+              <h5 id="review-availability" style={{margin:'0 0 8px 0'}}>4. Disponibilidad</h5>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {form.time_available ? (<div><strong>Tiempo disponible:</strong> {form.time_available}</div>) : null}
+                {form.time_outside ? (<div><strong>Tiempo fuera de casa:</strong> {form.time_outside}</div>) : null}
+                {!form.time_available && !form.time_outside && (<div style={{color:'#666'}}>No se ha especificado disponibilidad.</div>)}
+              </div>
+            </section>
+
           </div>
         )}
       </div>
 
-      <div style={{display:'flex',gap:8}}>
-        {step>1 && <button onClick={handlePrev}>Atrás</button>}
-        {step<4 && <button onClick={handleNext}>Siguiente</button>}
-        {step===4 && <button onClick={submit} disabled={loading} aria-busy={loading}>{loading? 'Guardando...': 'Crear perfil y buscar gatos'}</button>}
+      <div className="btn-row">
+        {step>1 && <button type="button" className="btn btn-secondary" onClick={handlePrev}>Atrás</button>}
+        {step<4 && <button type="button" className="btn btn-primary" onClick={handleNext}>Siguiente</button>}
+        {step===4 && <button type="button" className="btn btn-primary" onClick={submit} disabled={loading} aria-busy={loading}>{loading? 'Guardando...': 'Crear perfil y buscar gatos'}</button>}
       </div>
-      {error && <div style={{marginTop:12,color:'red'}}>{error}</div>}
+      {error && <div className="alert alert-error" role="alert">{error}</div>}
     </div>
   );
 }

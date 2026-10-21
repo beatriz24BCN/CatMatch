@@ -1,18 +1,16 @@
-import Head from 'next/head';
-import Navbar from '../../components/Navbar';
+import Layout from '../../components/Layout';
 import dynamic from 'next/dynamic';
 
 const ProfileForm = dynamic(()=>import('../../components/ProfileForm'),{ ssr:false });
 
 export default function ProfilePage(){
   return (
-    <div>
-      <Head><title>Perfil — CatMatch</title></Head>
-      <Navbar />
-      <main style={{padding:20}}>
-        <h1>Perfil de adoptante</h1>
+    <Layout title="Mi perfil">
+      <div className="page-narrow page">
+        <h1>Cuéntanos cómo vives</h1>
+        <p className="lead" style={{marginBottom:20}}>Sin cuenta ni registro. Usaremos estos datos solo para calcular qué gatos encajan contigo.</p>
         <ProfileForm />
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

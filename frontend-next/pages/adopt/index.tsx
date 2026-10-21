@@ -1,20 +1,22 @@
-import Head from 'next/head';
-import Navbar from '../../components/Navbar';
+import Layout from '../../components/Layout';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function AdoptIndex(){
+  const [hasProfile, setHasProfile] = useState(false);
+  useEffect(()=>{
+    try{ setHasProfile(!!localStorage.getItem('catmatch_person_id')); }catch(e){ /* storage unavailable */ }
+  },[]);
   return (
-    <div>
-      <Head><title>Adopta — CatMatch</title></Head>
-      <Navbar />
-      <main style={{padding:20}}>
-        <h1>Adopta</h1>
-        <p>Empieza el proceso creando tu perfil y luego revisa gatos sugeridos.</p>
-        <div style={{display:'flex',gap:12}}>
-          <Link href="/adopt/profile" style={{padding:12,background:'#0070f3',color:'#fff',borderRadius:6}}>Crear perfil</Link>
-          <Link href="/adopt/results" style={{padding:12,background:'#6c757d',color:'#fff',borderRadius:6}}>Ver resultados (si ya tienes perfil)</Link>
+    <Layout title="Encontrar gato">
+      <div className="container page">
+        <h1>Encontrar gato</h1>
+        <p className="lead">Empieza creando tu perfil y descubre los gatos que mejor encajan con tu forma de vida.</p>
+        <div className="btn-row" style={{marginTop:20}}>
+          <Link href="/adopt/profile" className="btn btn-primary">Crear mi perfil</Link>
+          {hasProfile && <Link href="/adopt/results" className="btn btn-secondary">Ver mis resultados</Link>}
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

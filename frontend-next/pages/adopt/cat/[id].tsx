@@ -1,9 +1,11 @@
-import Head from 'next/head';
-import Navbar from '../../../components/Navbar';
+import Layout from '../../../components/Layout';
+import { CatSilhouette } from '../../../components/icons';
+import { AGE_LABELS } from '../../../lib/labels';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { getCat } from '../../../lib/api';
 import Link from 'next/link';
+import { formatApiError } from '../../../lib/formatError';
 
 export default function CatDetail(){
   const router = useRouter();
@@ -15,49 +17,50 @@ export default function CatDetail(){
   useEffect(()=>{
     if(!id) return;
     setLoading(true); setErr(null);
-    getCat(id as string).then(c=>setCat(c)).catch(e=>setErr(e?.message||'Error')).finally(()=>setLoading(false));
+    getCat(id as string).then(c=>setCat(c)).catch(e=>setErr(formatApiError(e, 'No se ha podido cargar la ficha del gato.'))).finally(()=>setLoading(false));
   },[id]);
 
+  const traits = (()=>{
+    const pt = cat?.personality_traits;
+    if(!pt) return [] as string[];
+    if(Array.isArray(pt)) return pt.map(String);
+    if(typeof pt === 'object') return Object.keys(pt);
+    return [String(pt)];
+  })();
+  const photo = cat && Array.isArray(cat.image_urls) ? cat.image_urls[0] : null;
+
   return (
-    <div>
-      <Head><title>Ficha del gato</title></Head>
-      <Navbar />
-      <main style={{padding:20}}>
-        <h1>Ficha</h1>
-        {loading && <div>Cargando...</div>}
-        {err && <div style={{color:'red'}}>{err}</div>}
+    <Layout title={cat?.name ? `${cat.name}` : 'Ficha del gato'}>
+      <div className="container page">
+        <p><Link href="/adopt/results" className="btn btn-ghost btn-sm">← Volver a resultados</Link></p>
+        {loading && <div className="loading" role="status" aria-live="polite"><span className="spinner" />Cargando ficha…</div>}
+        {err && <div className="alert alert-error" role="alert">{err}</div>}
         {cat && (
-          <div style={{display:'grid',gridTemplateColumns:'360px 1fr',gap:16}}>
-            <div style={{border:'1px solid #ddd',padding:12}}>
-              {cat.image_urls && cat.image_urls.length>0 ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={cat.image_urls[0]} alt={cat.name} style={{maxWidth:'100%'}} />
-              ) : <div style={{height:200,background:'#f4f4f4',display:'flex',alignItems:'center',justifyContent:'center'}}>No image</div>}
-              <div style={{marginTop:8}}>
-                <Link href={`/adopt/cat/${id}/request`} style={{display:'inline-block',padding:10,background:'#28a745',color:'#fff',borderRadius:6}}>Solicitar adopción</Link>
+          <div className="detail-grid">
+            <div className="card" style={{overflow:'hidden'}}>
+              <div className="cat-photo" style={{aspectRatio:'1 / 1'}}>
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photo} alt={cat.name ? `Foto de ${cat.name}` : 'Foto del gato'} />
+                ) : <CatSilhouette />}
+              </div>
+              <div style={{padding:16}}>
+                <Link href={`/adopt/cat/${id}/request`} className="btn btn-primary" style={{width:'100%'}}>Quiero adoptar a este gato</Link>
               </div>
             </div>
             <div>
-              <h2>{cat.name}</h2>
-              <p>{cat.description}</p>
+              <h1>{cat.name}</h1>
+              {cat.description && <p className="lead">{cat.description}</p>}
               <dl>
-                <dt>Edad</dt><dd>{cat.age_stage} {cat.age_months ? `(${cat.age_months} meses)` : ''}</dd>
-                <dt>Localización</dt><dd>{cat.location}</dd>
-                <dt>Rasgos</dt><dd>{
-                  // Render personality_traits defensively and friendly
-                  (()=>{
-                    const pt = cat.personality_traits;
-                    if(!pt) return '—';
-                    if(Array.isArray(pt)) return pt.join(', ');
-                    if(typeof pt === 'object') return Object.keys(pt).join(', ');
-                    return String(pt);
-                  })()
-                }</dd>
+                <dt>Edad</dt><dd>{AGE_LABELS[cat.age_stage] || cat.age_stage} {cat.age_months ? `(${cat.age_months} meses)` : ''}</dd>
+                <dt>Localización</dt><dd>{cat.location || '—'}</dd>
+                <dt>Rasgos</dt>
+                <dd>{traits.length ? <span className="chips" style={{marginTop:0}}>{traits.map(t=><span className="chip" key={t}>{t}</span>)}</span> : '—'}</dd>
               </dl>
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

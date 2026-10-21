@@ -6,46 +6,70 @@ set -euo pipefail
 REPO_ROOT="/workspaces/CatMatch"
 NEXT_DIR="$REPO_ROOT/frontend-next"
 
-# Containers we expect
-CONTAINERS=("catmatch-db-recover" "catmatch-backend-perm" "catmatch-backend-recover")
+DB_CONTAINER="catmatch-db-recover"
+BACKEND_CONTAINER="catmatch-backend-perm"
 
-echo "[dev-up] Checking Docker containers..."
-for c in "${CONTAINERS[@]}"; do
-  if docker ps -a --format '{{.Names}}' | grep -xq "$c"; then
-    STATUS=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "not-found")
-    echo "  - $c: $STATUS"
-    if [ "$STATUS" = "exited" ] || [ "$STATUS" = "created" ] || [ "$STATUS" = "paused" ]; then
-      echo "    -> starting $c"; docker start "$c" >/dev/null || echo "    (start failed)"; fi
-  else
-    echo "  - $c: (container not present). Will NOT create it automatically. See docs/DEV_ENVIRONMENT.md"
-  fi
+die() { echo "[dev-up] ERROR: $*" >&2; exit 1; }
+
+# Starts an existing container if it is not running. Never creates or removes containers.
+ensure_container() {
+  local c="$1" status
+  docker ps -a --format '{{.Names}}' | grep -xq "$c" \
+    || die "container $c not present. It will NOT be created automatically. See docs/DEV_ENVIRONMENT.md"
+  status=$(docker inspect -f '{{.State.Status}}' "$c")
+  echo "  - $c: $status"
+  case "$status" in
+    running) ;;
+    exited|created) echo "    -> starting $c"; docker start "$c" >/dev/null || die "could not start $c" ;;
+    paused) echo "    -> unpausing $c"; docker unpause "$c" >/dev/null || die "could not unpause $c" ;;
+    *) die "$c is in unexpected state '$status'" ;;
+  esac
+}
+
+echo "[dev-up] Ensuring PostgreSQL container..."
+ensure_container "$DB_CONTAINER"
+
+# The network fix needs catmatch-net, which the DB container is attached to
+echo "[dev-up] Ensuring container networking (iptables-legacy rule)"
+"$REPO_ROOT/scripts/fix-docker-net.sh" || die "network fix failed (see output above); not continuing"
+
+echo "[dev-up] Waiting for PostgreSQL (max 60s)"
+for _ in $(seq 1 60); do
+  docker exec "$DB_CONTAINER" pg_isready -U postgres -d catmatch >/dev/null 2>&1 && break
+  sleep 1
 done
+docker exec "$DB_CONTAINER" pg_isready -U postgres -d catmatch >/dev/null 2>&1 \
+  || die "PostgreSQL is not ready (docker logs $DB_CONTAINER)"
+echo "  - PostgreSQL ready"
 
-# Wait a short moment for services to be reachable
-sleep 2
+echo "[dev-up] Ensuring backend container..."
+ensure_container "$BACKEND_CONTAINER"
 
-# Check backend health (port 8001)
-echo "[dev-up] Checking backend on http://127.0.0.1:8001/health"
-if curl -sS --max-time 5 http://127.0.0.1:8001/health >/dev/null 2>&1; then
-  echo "  - backend healthy"
-else
-  echo "  - backend not responding (check container logs: docker logs catmatch-backend-perm)"
-fi
+# Only waits for /health here; the functional API check (GET /api/cats/) runs in dev-check.sh at the end
+echo "[dev-up] Waiting for backend on http://127.0.0.1:8001 (max 60s)"
+for _ in $(seq 1 60); do
+  curl -sS --max-time 5 http://127.0.0.1:8001/health >/dev/null 2>&1 && break
+  sleep 1
+done
+curl -sS --max-time 5 http://127.0.0.1:8001/health >/dev/null 2>&1 \
+  || die "backend not responding (docker logs $BACKEND_CONTAINER)"
+echo "  - backend healthy"
 
 # Start Next.js dev server if not running
 echo "[dev-up] Ensuring Next dev server on port 3000"
 if ss -ltnp 2>/dev/null | grep -q ':3000'; then
-  echo "  - Next dev appears to be running already"
+  echo "  - Next dev appears to be running already (not restarted)"
 else
-  echo "  - Next dev not running. Starting it in background with NEXT_PUBLIC_API_BASE=http://127.0.0.1:8001"
-  if [ -d "$NEXT_DIR" ]; then
-    # start without changing files; will use existing node_modules if present
-    (cd "$NEXT_DIR" && env NEXT_PUBLIC_API_BASE='http://127.0.0.1:8001' npm run dev > /tmp/catmatch-next.log 2>&1 & echo $! > /tmp/catmatch-next.pid)
+  echo "  - Next dev not running. Starting it in background; /api/* is proxied to the backend by next.config.js"
+  [ -d "$NEXT_DIR" ] || die "frontend directory missing: $NEXT_DIR"
+  # NEXT_PUBLIC_API_BASE must stay unset so the browser calls its own origin (/api/...)
+  (cd "$NEXT_DIR" && env -u NEXT_PUBLIC_API_BASE npm run dev > /tmp/catmatch-next.log 2>&1 & echo $! > /tmp/catmatch-next.pid)
+  for _ in $(seq 1 30); do
+    curl -sS --max-time 3 -o /dev/null http://127.0.0.1:3000/ 2>/dev/null && break
     sleep 1
-    echo "    -> started (pid $(cat /tmp/catmatch-next.pid 2>/dev/null || echo '?')); logs: /tmp/catmatch-next.log"
-  else
-    echo "    -> frontend directory missing: $NEXT_DIR"
-  fi
+  done
+  echo "    -> started (pid $(cat /tmp/catmatch-next.pid 2>/dev/null || echo '?')); logs: /tmp/catmatch-next.log"
 fi
 
-echo "[dev-up] Done. Use scripts/dev-check.sh to verify services."
+echo "[dev-up] Running final verification (scripts/dev-check.sh)"
+exec "$REPO_ROOT/scripts/dev-check.sh"

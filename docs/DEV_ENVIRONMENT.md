@@ -8,14 +8,17 @@ without modifying backups, volumes or business code. It is intentionally conserv
 Overview
 --------
 - PostgreSQL recovery container: catmatch-db-recover (do not remove or recreate)
-- Backend containers: catmatch-backend-perm (active on host:8001), catmatch-backend-recover (on 8000)
+- Backend containers: catmatch-backend-perm (active on host:8001), catmatch-backend-recover (on 8000, only /health; not used)
 - Frontend: Next.js in frontend-next, dev server on port 3000
 
 Scripts
 -------
-Two helper scripts are provided in scripts/:
-- scripts/dev-up.sh  — idempotent starter: starts existing containers (docker start) and launches Next dev if needed.
-- scripts/dev-check.sh — health checks: confirms backend /health and openapi, Next dev, CORS header presence, and git status.
+Helper scripts in scripts/ (full procedure: docs/CATMATCH_RECOVERY.md):
+- scripts/dev-up.sh  — idempotent starter: starts existing PostgreSQL and backend containers (docker start, never recreates),
+  applies the container network rule via scripts/fix-docker-net.sh, waits for PostgreSQL and launches Next dev if port 3000 is free.
+  It finishes by running dev-check.sh.
+- scripts/dev-check.sh — read-only checks: network rule, PostgreSQL, backend /health, GET /api/cats/ (backend and through the Next proxy), frontend.
+- scripts/fix-docker-net.sh — adds the temporary iptables-legacy DOCKER-USER rule for catmatch-net if missing (--check only reports).
 
 Principles
 ----------
@@ -31,24 +34,25 @@ How to use (next session)
    ./scripts/dev-up.sh
 
    This will:
-   - start catmatch-db-recover, catmatch-backend-perm, catmatch-backend-recover if they exist but are stopped
-   - check backend health on http://127.0.0.1:8001/health
-   - start Next dev server on port 3000 (with NEXT_PUBLIC_API_BASE=http://127.0.0.1:8001) using the local node_modules if present
+   - start catmatch-db-recover and catmatch-backend-perm if they exist but are stopped
+   - ensure the container network rule (stops with an error if it fails)
+   - wait for PostgreSQL and check backend health on http://127.0.0.1:8001/health
+   - start Next dev server on port 3000 if it is not running, WITHOUT NEXT_PUBLIC_API_BASE
+     (the browser calls /api/... on port 3000 and frontend-next/next.config.js proxies it to http://localhost:8001)
+   - run scripts/dev-check.sh
 
-2) Verify environment:
+2) Verify environment at any time (read-only):
 
    ./scripts/dev-check.sh
 
-   The script prints OpenAPI paths (if reachable), checks /health and reports if CORS header is present.
+3) Open the frontend from the Ports tab (port 3000, Open in Browser).
 
 Manual commands
 ---------------
 - Start an existing container (non-destructive): docker start <container>
 - View backend logs: docker logs -f catmatch-backend-perm
-- Show backend OpenAPI: curl http://127.0.0.1:8001/openapi.json | jq '.paths | keys'
-- Start Next dev manually (if you prefer):
+- Start Next dev manually (if you prefer; do NOT set NEXT_PUBLIC_API_BASE):
     cd frontend-next
-    export NEXT_PUBLIC_API_BASE='http://127.0.0.1:8001'
     npm run dev
 
 Notes and troubleshooting

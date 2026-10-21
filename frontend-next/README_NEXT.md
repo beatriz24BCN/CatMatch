@@ -15,7 +15,8 @@ Files created:
 How to proceed (manual steps — do not run yet):
 1. cd frontend-next
 2. npm install
-3. Set environment variable: NEXT_PUBLIC_API_BASE=http://localhost:8000
+3. Do NOT set NEXT_PUBLIC_API_BASE: in this setup /api/... is proxied to the backend on port 8001 by next.config.js
+   (see docs/CATMATCH_RECOVERY.md). Use ../scripts/dev-up.sh to start everything.
 4. npm run dev
 
 Notes on integrating the existing client and types:

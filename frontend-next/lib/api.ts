@@ -1,5 +1,13 @@
 import { formatApiError } from './formatError';
-import type { Person, CatsForPersonRequest, CatsForPersonResponse, MatchEvaluateRequest, MatchEvaluateResponse } from '../types/api';
+import type {
+  Person,
+  CatsForPersonRequest,
+  CatsForPersonResponse,
+  MatchEvaluateRequest,
+  MatchEvaluateResponse,
+  UserRead,
+  TokenResponse
+} from '../types/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
@@ -90,4 +98,46 @@ export async function updateAdoptionRequestStatus(reqId: string, status: string)
     body: JSON.stringify({ status }),
   });
   return handleResponse<any>(resp);
+}
+
+// ==================== Autenticación (Auth API) ====================
+
+export async function registerUser(payload: { email: string; password: string }): Promise<UserRead> {
+  const url = buildUrl('/api/auth/register');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<UserRead>(resp);
+}
+
+export async function loginUser(payload: { email: string; password: string }): Promise<TokenResponse> {
+  const url = buildUrl('/api/auth/login');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<TokenResponse>(resp);
+}
+
+export async function logoutUser(): Promise<{ message: string }> {
+  const url = buildUrl('/api/auth/logout');
+  const resp = await fetch(url, {
+    method: 'POST',
+  });
+  return handleResponse<{ message: string }>(resp);
+}
+
+export async function getMe(): Promise<UserRead | null> {
+  const url = buildUrl('/api/auth/me');
+  const resp = await fetch(url, {
+    method: 'GET',
+  });
+  if (resp.status === 401) {
+    // Usuario no autenticado: estado normal sin sesión
+    return null;
+  }
+  return handleResponse<UserRead>(resp);
 }

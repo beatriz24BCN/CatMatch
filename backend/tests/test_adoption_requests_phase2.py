@@ -6,17 +6,23 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from backend.app.main import app
 from backend.app.crud import adoption_requests as ar_crud
+from backend.app.api.deps import get_current_admin
+from backend.app.models.user import User
 
 client = TestClient(app)
 
+fake_admin = type('AdminUser', (), {'id': '00000000-0000-0000-0000-000000000001', 'role': 'admin', 'is_active': True})()
 
 class AdoptionRequestsPhase2ApiTestCase(unittest.TestCase):
     def setUp(self):
         self._orig_list = getattr(ar_crud, 'list_adoption_requests', None)
         self._orig_get = getattr(ar_crud, 'get_adoption_request', None)
         self._orig_update = getattr(ar_crud, 'update_adoption_request_status', None)
+        # Mock admin autenticado para este caso de prueba específico
+        app.dependency_overrides[get_current_admin] = lambda: fake_admin
 
     def tearDown(self):
+        app.dependency_overrides.pop(get_current_admin, None)
         if self._orig_list:
             ar_crud.list_adoption_requests = self._orig_list
         if self._orig_get:

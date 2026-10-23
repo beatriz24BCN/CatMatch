@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from backend.app.api.deps import get_db
+from backend.app.api.deps import get_db, get_current_admin
 from backend.app.schemas.adoption_request import AdoptionRequestCreate, AdoptionRequestRead
 from backend.app.crud import adoption_requests as crud
 from backend.app.crud import cats as cats_crud
 from sqlalchemy.exc import SQLAlchemyError
+from backend.app.models.user import User
 
 router = APIRouter(prefix="/api/adoption_requests", tags=["adoption_requests"])
 
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/api/adoption_requests", tags=["adoption_requests"])
 def create_adoption_request(payload: AdoptionRequestCreate, db=Depends(get_db)):
     """Create a new AdoptionRequest.
 
+    PÚBLICO: No requiere autenticación previa.
     Validates the referenced cat exists before persisting.
     Returns 201 with the created AdoptionRequestRead.
     """
@@ -29,8 +31,14 @@ def create_adoption_request(payload: AdoptionRequestCreate, db=Depends(get_db)):
 
 
 @router.get("/", response_model=list[AdoptionRequestRead])
-def list_requests(status: str | None = None, limit: int = 100, offset: int = 0, db=Depends(get_db)):
-    """List adoption requests. Optional query parameter `status` filters by status."""
+def list_requests(
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    db=Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """List adoption requests. PROTEGIDO: Requiere rol de administrador."""
     try:
         items = crud.list_adoption_requests(db, status=status, limit=limit, offset=offset)
         return items
@@ -39,7 +47,12 @@ def list_requests(status: str | None = None, limit: int = 100, offset: int = 0, 
 
 
 @router.get("/{req_id}", response_model=AdoptionRequestRead)
-def get_request(req_id: str, db=Depends(get_db)):
+def get_request(
+    req_id: str,
+    db=Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Obtener detalle de solicitud. PROTEGIDO: Requiere rol de administrador."""
     ar = crud.get_adoption_request(db, req_id)
     if not ar:
         raise HTTPException(status_code=404, detail="Adoption request not found")
@@ -53,11 +66,13 @@ class StatusUpdatePayload:
 
 
 @router.patch("/{req_id}", response_model=AdoptionRequestRead)
-def update_request_status(req_id: str, payload: dict, db=Depends(get_db)):
-    """Update the status of an adoption request.
-
-    Allowed statuses are application-level and not enforced as DB enums: pending, in_review, accepted, rejected
-    """
+def update_request_status(
+    req_id: str,
+    payload: dict,
+    db=Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Actualizar estado de solicitud. PROTEGIDO: Requiere rol de administrador."""
     allowed = {"pending", "in_review", "accepted", "rejected"}
     new_status = payload.get("status")
     if not new_status or not isinstance(new_status, str):

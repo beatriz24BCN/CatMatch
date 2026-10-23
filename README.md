@@ -4,14 +4,48 @@
 
 CatMatch ayuda a encontrar gatos compatibles con el estilo de vida de una persona. El objetivo de la primera tanda (MVP) es permitir que una persona sin cuenta cree un perfil, compare ese perfil con los perfiles de gatos disponibles y obtenga resultados de compatibilidad claramente explicados que le permitan solicitar la adopción desde la ficha del gato.
 
-2. Technology Stack (objetivo)
+2. Technology Stack
 
-- Frontend: Next.js
-- Lenguaje frontend: TypeScript
-- Backend: FastAPI (Python)
-- Base de datos: PostgreSQL
-- Contenerización: Docker / docker-compose
-- RAG / IA: prevista para una fase posterior (NO forma parte de la primera tanda)
+- **Frontend:** Next.js (React 19, TypeScript, CSS modular) en `frontend-next/`
+- **Backend:** FastAPI (Python 3.11 / 3.14) con Pydantic v2 y SQLAlchemy en `backend/`
+- **Base de datos:** PostgreSQL 15 con extensiones y soporte JSONB / UUID
+- **Migraciones:** Alembic en `backend/alembic/`
+- **Contenerización y Red:** Docker, docker-compose (`docker-compose.yml`, `compose.codespaces.yml`) y scripts de red en `scripts/`
+- **Tests:** Pytest con suite automatizada en `backend/tests/` (50 tests pasando al 100%)
+- **IA / RAG:** Prevista para una fase posterior (NO forma parte de la primera tanda del MVP)
+
+2.1. Estructura del repositorio
+
+```text
+/workspaces/CatMatch
+├── backend/                  # API FastAPI, modelos, schemas, CRUD, routers y tests
+│   ├── alembic/              # Migraciones de base de datos Alembic
+│   ├── app/                  # Código fuente de la aplicación (api, crud, models, schemas, services)
+│   ├── scripts/              # Scripts auxiliares (p. ej. seed_demo_cats.py)
+│   ├── tests/                # Suite de pruebas unitarias e integración (pytest)
+│   └── requirements.txt      # Dependencias Python
+├── frontend-next/            # Aplicación Next.js (Pages Router)
+│   ├── components/           # Componentes UI (Navbar, Layout, CatCard, ProfileForm...)
+│   ├── pages/                # Rutas: /, /adopt/profile, /adopt/results, /adopt/cat/[id], /admin/...
+│   ├── public/               # Archivos estáticos y fotografías
+│   ├── styles/               # Estilos globales y responsive
+│   └── package.json          # Dependencias Node.js
+├── docs/                     # Documentación técnica y funcional
+│   ├── backlog.md            # Backlog de épicas e historias de usuario (Semana 1)
+│   ├── data_model.md         # Diseño conceptual del modelo de datos
+│   ├── wireframes.md         # Wireframes y blueprint de interfaces
+│   ├── Prioridades_CatMatch.md # Alcance funcional aprobado del proyecto
+│   ├── DEV_ENVIRONMENT.md    # Guía detallada del entorno de desarrollo
+│   └── CATMATCH_RECOVERY.md  # Procedimientos de diagnóstico y recuperación
+├── scripts/                  # Scripts de automatización y chequeo del entorno
+│   ├── dev-up.sh             # Arranque idempotente y no destructivo del entorno
+│   ├── dev-check.sh          # Comprobación de salud de contenedores, red, backend y proxy
+│   └── fix-docker-net.sh     # Regla de firewall DOCKER-USER para catmatch-net
+├── compose.codespaces.yml    # Especificación declarativa de servicios Docker
+├── docker-compose.yml        # Docker Compose base
+├── .env.example              # Plantilla de variables de entorno (sin secretos)
+└── README.md                 # Este documento
+```
 
 3. MVP — Primera tanda (prioridad)
 
@@ -80,27 +114,109 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 
 8. Segunda tanda / funcionalidades futuras
 
-- Cuentas de usuario: User, registro, login, sesiones.
-- Asociar Person a una cuenta.
-- Favorites (marcar gatos) y gestión de solicitudes desde el panel de usuario.
+- Asociación de perfil `Person` a una cuenta registrada.
+- Favorites (marcar gatos) y gestión de solicitudes desde el panel del adoptante.
 - Integración avanzada con IA/RAG para mejorar la explicación y el scoring (fase posterior).
 
-9. Estado actual del desarrollo
+9. Estado actual del desarrollo y Verificación
 
-- **Backend, dependencias y verificación mínima**
-  - El backend está implementado con FastAPI (Python).
-  - Las dependencias del backend deben instalarse desde `backend/requirements.txt`.
-  - Existe una prueba básica de humo que comprueba el endpoint `/health` mediante FastAPI TestClient. Esta prueba no verifica por sí sola la conexión con PostgreSQL ni el funcionamiento completo de la aplicación.
-  - Pendiente de preparar o verificar: el entorno de pruebas necesario para comprobar la conexión real con PostgreSQL, aplicar y validar las migraciones de Alembic y preparar o validar las pruebas de integración correspondientes.
+- **Backend y Base de Datos:**
+  - El backend está implementado con FastAPI (Python) estructurado en routers, schemas Pydantic v2, modelos SQLAlchemy y capa CRUD.
+  - Base de datos PostgreSQL en contenedor `catmatch-db-recover` con migraciones Alembic (`0003_add_users_table`) aplicadas y al día.
+  - Tabla `users` implementada con hashing seguro PBKDF2-HMAC-SHA256 (600.000 iteraciones) e índices únicos en `email`.
+  - Autenticación JWT mediante tokens firmados HMAC-SHA256 y soporte para cookies `HttpOnly` (`catmatch_token`).
+  - Autorización por roles (`user` vs `admin`): protección de endpoints administrativos de solicitudes de adopción (`GET /api/adoption_requests/`, `PATCH /api/adoption_requests/{id}`).
+  - Conservación íntegra del flujo público: catálogo de gatos, creación de perfil de adoptante, matching y envío de solicitudes de adopción son 100% accesibles sin cuenta.
+  - Seed de datos de prueba (`backend/scripts/seed_demo_cats.py`) cargado con 6 perfiles representativos de gatos (Milo, Nala, Simba, Luna, Nube, Oreo) para pruebas completas de compatibilidad.
+  - Suite de pruebas automatizadas: **50 tests unitarios y de integración** con mocks en `backend/tests/` ejecutados y superados con éxito (100% passing).
+- **Frontend Next.js:**
+  - Desarrollado en Next.js (Pages Router) y TypeScript en `frontend-next/`.
+  - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
+  - Vistas funcionales: portada (`/`), creación de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
+- **Puntos en curso o decisiones pendientes:**
+  - *Incidencias visuales menores:* Foto de portada `hero-cat.jpg` ausente (error 404), favicon `.ico` ausente y ajuste de aspecto de foto en ficha de gato.
+  - *Actualización de seguridad Next.js:* Pendiente aplicar parche de Next.js (16.4.0 → 16.4.1/16.4.2).
 
-- **Funcionalidades pendientes**
-  - El matching definitivo, la autenticación y la integración RAG/IA todavía no están implementados en esta fase.
+10. Entorno de desarrollo, configuración y ejecución
 
+### 10.1. Requisitos previos
+- Docker y Docker Compose (o entorno GitHub Codespaces).
+- Node.js >= 20.9.0 (en este Codespace v24.21.0) y npm >= 10.
+- Python 3.11 / 3.14.
 
-10. Documentación
+### 10.2. Variables de entorno (`.env.example`)
 
-- Modelo de datos y vocabularios: docs/data_model.md
-- Wireframes y guía UI: docs/wireframes.md
+Las variables de entorno se definen en el archivo `.env` en la raíz del proyecto (basado en `.env.example`). No almacenar contraseñas reales ni secretos en el repositorio.
+
+| Variable | Finalidad | Obligatoria | Valor por defecto / Ejemplo |
+|---|---|---|---|
+| `POSTGRES_USER` | Usuario de PostgreSQL para el backend | Sí (si no se define `DATABASE_URL`) | `postgres` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | Sí (si no se define `DATABASE_URL`) | `changeme` (en local) |
+| `POSTGRES_DB` | Nombre de la base de datos | Sí (si no se define `DATABASE_URL`) | `catmatch` |
+| `DATABASE_URL` | URI de conexión completa a PostgreSQL | Opcional (calculada a partir de los campos anteriores) | `postgresql://user:pass@db:5432/catmatch` |
+| `BACKEND_URL` | URL de destino usada por el proxy de Next.js | Opcional | `http://localhost:8001` (por defecto en Next.js) |
+| `JWT_SECRET_KEY` | Clave secreta para firma criptográfica HMAC-SHA256 de tokens JWT | Opcional en dev (genera efímera), obligatoria en prod | `cambiar_por_un_secreto_largo_y_aleatorio_en_produccion` |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Tiempo de validez del token de acceso JWT en minutos | Opcional | `60` |
+
+### 10.3. Instrucciones de arranque
+
+El entorno de desarrollo en Codespaces cuenta con scripts conservadores y no destructivos:
+
+1. **Arranque del entorno completo:**
+   ```bash
+   cd /workspaces/CatMatch
+   ./scripts/dev-up.sh
+   ```
+   *Este script inicia los contenedores existentes sin recrearlos, aplica la regla de red necesaria para Docker, comprueba PostgreSQL y levanta Next.js en el puerto 3000 si está libre.*
+
+2. **Comprobación de salud del entorno (solo lectura):**
+   ```bash
+   ./scripts/dev-check.sh
+   ```
+   *Verifica que los contenedores estén activos, que PostgreSQL responda, que la API `/api/cats/` devuelva datos y que el proxy de Next.js entregue la respuesta idéntica.*
+
+3. **Abrir la aplicación en el navegador:**
+   - Desde la pestaña **Ports** de VS Code / Codespaces, abrir el puerto **3000** (**Open in Browser**).
+
+### 10.4. Ejecución de pruebas
+
+Para ejecutar la suite de pruebas automatizadas del backend:
+
+```bash
+cd /workspaces/CatMatch
+DATABASE_URL="sqlite:///:memory:" pytest backend/tests/ -v
+```
+
+11. Catálogo de Endpoints de la API
+
+FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/docs` y `http://localhost:8001/redoc`.
+
+| Método | Ruta | Finalidad | Código éxito |
+|---|---|---|---|
+| `GET` | `/health` | Chequeo de salud del servicio | 200 OK |
+| `GET` | `/api/cats/` | Listar catálogo de gatos disponibles (soporta paginación `limit`, `offset`) | 200 OK |
+| `GET` | `/api/cats/{cat_id}` | Obtener ficha detallada de un gato por UUID | 200 OK / 404 |
+| `POST` | `/api/cats/for_person` | Evaluar y ordenar gatos por compatibilidad con un perfil de persona | 200 OK / 404 |
+| `POST` | `/api/match/evaluate` | Evaluación atómica de compatibilidad entre un perfil de persona y un gato | 200 OK |
+| `POST` | `/api/persons/` | Crear perfil de adoptante anónimo (sin cuenta ni contraseña) | 201 Created |
+| `GET` | `/api/persons/{person_id}` | Obtener perfil de adoptante por UUID | 200 OK / 404 |
+| `POST` | `/api/adoption_requests/` | Enviar solicitud de adopción para un gato (público sin cuenta) | 201 Created |
+| `GET` | `/api/adoption_requests/` | Listar solicitudes registradas (requiere rol de administrador) | 200 OK / 401 / 403 |
+| `GET` | `/api/adoption_requests/{req_id}` | Consultar detalle de una solicitud (requiere rol de administrador) | 200 OK / 401 / 403 / 404 |
+| `PATCH` | `/api/adoption_requests/{req_id}` | Actualizar estado de solicitud (requiere rol de administrador) | 200 OK / 400 / 401 / 403 |
+| `POST` | `/api/auth/register` | Registrar nueva cuenta de usuario (rol estándar 'user') | 201 Created / 409 / 422 |
+| `POST` | `/api/auth/login` | Iniciar sesión y emitir token Bearer JWT / cookie HttpOnly | 200 OK / 401 |
+| `POST` | `/api/auth/logout` | Cerrar sesión y limpiar cookie de acceso | 200 OK |
+| `GET` | `/api/auth/me` | Obtener identidad y rol del usuario autenticado | 200 OK / 401 |
+
+12. Documentación técnica y funcional
+
+- **Backlog de Épicas e Historias de Usuario:** [docs/backlog.md](docs/backlog.md)
+- **Alcance Funcional Aprobado:** [docs/Prioridades_CatMatch.md](docs/Prioridades_CatMatch.md)
+- **Modelo de Datos y Vocabularios:** [docs/data_model.md](docs/data_model.md)
+- **Wireframes e Interfaces:** [docs/wireframes.md](docs/wireframes.md)
+- **Guía de Entorno de Desarrollo:** [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)
+- **Protocolo de Recuperación y Contingencia:** [docs/CATMATCH_RECOVERY.md](docs/CATMATCH_RECOVERY.md)
 
 ---
 

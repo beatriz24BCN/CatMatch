@@ -6,6 +6,7 @@ from .api.routers import cats as cats_router
 from .api.routers import match as match_router
 from .api.routers import persons as persons_router
 from .api.routers import adoption_requests as adoption_requests_router
+from .api.routers import auth as auth_router
 
 app = FastAPI(title="CatMatch API")
 
@@ -14,6 +15,7 @@ app.include_router(cats_router.router)
 app.include_router(match_router.router)
 app.include_router(persons_router.router)
 app.include_router(adoption_requests_router.router)
+app.include_router(auth_router.router)
 
 
 @app.get("/health")

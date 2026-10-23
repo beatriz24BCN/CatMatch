@@ -288,8 +288,3 @@ Ejemplo de respuesta (fragmento)
 
 ---
 
-Si quieres, puedo añadir la documentación en formato más formal (archivo YAML OpenAPI o añadir ejemplos en la propia definición del endpoint para que aparezcan en /docs). Dime si lo deseas.
-
-Si necesitas que genere los tipos TypeScript (interfaces) para el frontend con esta response, puedo generarlos también.
-
-Si necesitas que incluya la definición exacta del payload `person` mínima aceptada o que valide campos obligatorios, dime qué campos son imprescindibles y lo añado.

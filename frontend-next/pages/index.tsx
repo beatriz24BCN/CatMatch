@@ -14,11 +14,10 @@ const STEPS = [
 export default function Home() {
   const [cats, setCats] = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [heroPhoto, setHeroPhoto] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/cats/?limit=3')
+    fetch('/api/cats/?limit=4')
       .then(async resp => {
         if (!resp.ok) throw new Error(resp.statusText || 'Error');
         return resp.json();
@@ -47,14 +46,11 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-art">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2d5a3f' }}>
-              <CatSilhouette className="hero-silhouette" />
-            </div>
-            {heroPhoto && (
-              // Optional photo: drop a file at public/images/hero-cat.jpg; if absent the illustration is shown.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/images/hero-cat.jpg" alt="Un gato descansando en casa" onError={() => setHeroPhoto(false)} />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/hero-cat.jpg"
+              alt="Gato mirando con atención, listo para encontrar un hogar"
+            />
           </div>
         </div>
       </section>

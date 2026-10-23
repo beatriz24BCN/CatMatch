@@ -8,8 +8,22 @@ from backend.app.services.matching import evaluate_match
 router = APIRouter(prefix="/api/cats", tags=["cats"])
 
 @router.get("/", response_model=List[CatRead])
-def list_cats(limit: int = 100, offset: int = 0, db=Depends(get_db)):
-    cats_list = crud.list_cats(db, limit=limit, offset=offset)
+def list_cats(
+    limit: int = 100,
+    offset: int = 0,
+    location: Optional[str] = None,
+    age_stage: Optional[str] = None,
+    activity_level: Optional[str] = None,
+    db=Depends(get_db)
+):
+    cats_list = crud.list_cats(
+        db,
+        limit=limit,
+        offset=offset,
+        location=location,
+        age_stage=age_stage,
+        activity_level=activity_level,
+    )
     return cats_list
 
 

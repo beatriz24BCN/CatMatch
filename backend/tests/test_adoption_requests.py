@@ -30,7 +30,7 @@ class AdoptionRequestsApiTestCase(unittest.TestCase):
         def fake_create(db, data):
             attrs = dict(data, **{
                 "id": "00000000-0000-0000-0000-000000000011",
-                "person_id": None,
+                "person_id": data.get("person_id"),
                 "contact_phone": None,
                 "status": "pending",
                 "created_at": datetime.utcnow(),
@@ -41,12 +41,18 @@ class AdoptionRequestsApiTestCase(unittest.TestCase):
         cats_crud.get_cat = fake_get_cat
         ar_crud.create_adoption_request = fake_create
 
-        payload = {"cat_id": "00000000-0000-0000-0000-000000000011", "contact_email": "a@a.com", "message": "Hi"}
+        payload = {
+            "cat_id": "00000000-0000-0000-0000-000000000011",
+            "contact_email": "a@a.com",
+            "message": "Hi",
+            "person_id": "00000000-0000-0000-0000-000000000099"
+        }
         resp = client.post('/api/adoption_requests/', json=payload)
         self.assertEqual(resp.status_code, 201)
         body = resp.json()
         self.assertEqual(body.get('id'), "00000000-0000-0000-0000-000000000011")
         self.assertEqual(body.get('contact_email'), "a@a.com")
+        self.assertEqual(body.get('person_id'), "00000000-0000-0000-0000-000000000099")
 
     def test_create_adoption_request_validation(self):
         # missing cat_id should yield 422

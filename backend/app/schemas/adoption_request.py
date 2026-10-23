@@ -6,6 +6,8 @@ from datetime import datetime
 class AdoptionRequestCreate(BaseModel):
     cat_id: UUID
     contact_email: str
+    person_id: Optional[UUID] = None
+    contact_phone: Optional[str] = None
     message: Optional[str] = None
 
 class AdoptionRequestRead(AdoptionRequestCreate):

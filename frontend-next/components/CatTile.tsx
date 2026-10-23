@@ -6,12 +6,24 @@ import { AGE_LABELS } from '../lib/labels';
 export default function CatTile({ cat }: { cat: any }) {
   const photo = Array.isArray(cat?.image_urls) ? cat.image_urls[0] : null;
   const age = AGE_LABELS[cat?.age_stage] || cat?.age_stage;
+
+  // Limpiar etiquetas técnicas de demostración del texto visible (ej. "[Perfil de demostración] ")
+  const cleanDescription = (cat?.description || '').replace(/^\[Perfil de demostración\]\s*/i, '').trim();
+
+  // Clase específica para ajuste de encuadre si es Luna u otra imagen con foco superior
+  const isLuna = String(cat?.name).toLowerCase() === 'luna' || String(photo).includes('luna.jpg');
+
   return (
     <article className="card cat-tile" aria-label={`Gato ${cat?.name || 'sin nombre'}`}>
       <div className="cat-photo">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={cat?.name ? `Foto de ${cat.name}` : 'Foto del gato'} loading="lazy" />
+          <img
+            src={photo}
+            alt={cat?.name ? `Foto de ${cat.name}` : 'Foto del gato'}
+            className={isLuna ? 'photo-luna' : ''}
+            loading="lazy"
+          />
         ) : (
           <CatSilhouette />
         )}
@@ -22,7 +34,7 @@ export default function CatTile({ cat }: { cat: any }) {
           {age}{cat?.age_months ? ` · ${cat.age_months} meses` : ''}
           {cat?.location ? ` · ${cat.location}` : ''}
         </div>
-        {cat?.description && <p className="cat-desc">{cat.description}</p>}
+        {cleanDescription && <p className="cat-desc">{cleanDescription}</p>}
         <div className="cat-actions">
           <Link href={`/adopt/cat/${cat.id}`} className="btn btn-secondary btn-sm">Ver ficha</Link>
         </div>

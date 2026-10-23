@@ -128,14 +128,14 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
   - Autorización por roles (`user` vs `admin`): protección de endpoints administrativos de solicitudes de adopción (`GET /api/adoption_requests/`, `PATCH /api/adoption_requests/{id}`).
   - Conservación íntegra del flujo público: catálogo de gatos, creación de perfil de adoptante, matching y envío de solicitudes de adopción son 100% accesibles sin cuenta.
   - Seed de datos de prueba (`backend/scripts/seed_demo_cats.py`) cargado con 6 perfiles representativos de gatos (Milo, Nala, Simba, Luna, Nube, Oreo) para pruebas completas de compatibilidad.
-  - Suite de pruebas automatizadas: **50 tests unitarios y de integración** con mocks en `backend/tests/` ejecutados y superados con éxito (100% passing).
+  - Suite de pruebas automatizadas: **53 tests unitarios y de integración** con mocks en `backend/tests/` ejecutados y superados con éxito (100% passing).
 - **Frontend Next.js:**
-  - Desarrollado en Next.js (Pages Router) y TypeScript en `frontend-next/`.
+  - Desarrollado en Next.js 16.4.3 (Pages Router) y TypeScript en `frontend-next/`.
   - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
-  - Vistas funcionales: portada (`/`), creación de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
-- **Puntos en curso o decisiones pendientes:**
-  - *Incidencias visuales menores:* Foto de portada `hero-cat.jpg` ausente (error 404), favicon `.ico` ausente y ajuste de aspecto de foto en ficha de gato.
-  - *Actualización de seguridad Next.js:* Pendiente aplicar parche de Next.js (16.4.0 → 16.4.1/16.4.2).
+  - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
+- **Estado de seguridad y calidad visual:**
+  - *Actualización de seguridad Next.js:* Actualizado a Next.js 16.4.3 en `package.json` y `package-lock.json`; `npm audit --omit=dev` reporta 0 vulnerabilidades.
+  - *Identidad gráfica y navegación:* Portada limpia sin peticiones 404 a `hero-cat.jpg`, favicon `.ico` y `.svg` de marca configurados; ficha de gato con encuadre de imagen protegido (aspect ratio 4:3) y presentación de salud y cuidados.
 
 10. Entorno de desarrollo, configuración y ejecución
 
@@ -287,9 +287,3 @@ Ejemplo de respuesta (fragmento)
 ]
 
 ---
-
-Si quieres, puedo añadir la documentación en formato más formal (archivo YAML OpenAPI o añadir ejemplos en la propia definición del endpoint para que aparezcan en /docs). Dime si lo deseas.
-
-Si necesitas que genere los tipos TypeScript (interfaces) para el frontend con esta response, puedo generarlos también.
-
-Si necesitas que incluya la definición exacta del payload `person` mínima aceptada o que valide campos obligatorios, dime qué campos son imprescindibles y lo añado.

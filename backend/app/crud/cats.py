@@ -9,7 +9,21 @@ def get_cat(db, cat_id: str) -> Optional[Cat]:
     return result.scalars().first()
 
 
-def list_cats(db, limit: int = 100, offset: int = 0) -> List[Cat]:
-    stmt = select(Cat).limit(limit).offset(offset)
+def list_cats(
+    db,
+    limit: int = 100,
+    offset: int = 0,
+    location: Optional[str] = None,
+    age_stage: Optional[str] = None,
+    activity_level: Optional[str] = None,
+) -> List[Cat]:
+    stmt = select(Cat)
+    if location:
+        stmt = stmt.where(Cat.location.ilike(f"%{location.strip()}%"))
+    if age_stage:
+        stmt = stmt.where(Cat.age_stage == age_stage.strip())
+    if activity_level:
+        stmt = stmt.where(Cat.activity_level == activity_level.strip())
+    stmt = stmt.limit(limit).offset(offset)
     result = db.execute(stmt)
     return result.scalars().all()

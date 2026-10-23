@@ -70,12 +70,12 @@ Objetivo: Gestionar y consultar la información completa de los gatos en adopci�
 - **Historia:** Como adoptante, quiero entrar en la ficha individual de un gato para conocer su historia, necesidades médicas, nivel de actividad y carácter antes de solicitar su adopción.
 - **Prioridad:** P0
 - **Dependencias:** US-03.
-- **Estado:** En curso (funcionalidad implementada; incidencia visual de relación de aspecto en foto pendiente de corrección).
+- **Estado:** Completada y verificada.
 - **Criterios de aceptación:**
   1. Ruta dedicada `/adopt/cat/[id]` que consulta `GET /api/cats/{cat_id}`.
-  2. Muestra fotografía, descripción completa, edad, rasgos (chips visuales) y estado de salud.
+  2. Muestra fotografía con relación de aspecto 4:3 protegida (sin recortes bruscos ni deformaciones), descripción completa, edad, rasgos (chips visuales), nivel de actividad, convivencia con niños/perros, estado de salud y estado de vacunación/esterilización.
   3. Contiene un botón CTA prominente: «Quiero adoptar a este gato» que redirige al formulario de solicitud.
-  4. La fotografía debe visualizarse adecuadamente sin cortes bruscos que desfiguren al animal.
+  4. Manejo controlado de identificadores inexistentes (estado vacío y enlace a catálogo) y errores de red.
 
 ---
 
@@ -173,10 +173,10 @@ Objetivo: Garantizar que la interfaz sea accesible, visualmente impecable, respo
 - **Historia:** Como visitante, quiero ver una cabecera atractiva y sin elementos rotos que comunique el propósito del proyecto y me invite a iniciar el proceso.
 - **Prioridad:** P1
 - **Dependencias:** Ninguna.
-- **Estado:** En curso (existe silueta SVG funcional, pero la imagen referenciada `/images/hero-cat.jpg` genera error 404 en consola).
+- **Estado:** Completada y verificada.
 - **Criterios de aceptación:**
-  1. El hero no debe emitir peticiones a recursos ausentes que generen errores HTTP 404.
-  2. Dispone de un favicon válido (`favicon.ico`) que elimina los errores 404 de favicon en el navegador.
+  1. El hero no emite peticiones a recursos ausentes ni genera errores HTTP 404 (eliminada referencia a `hero-cat.jpg` inexistente, preservando la identidad visual con la silueta SVG de marca).
+  2. Dispone de favicons válidos (`favicon.ico` y `favicon.svg`) configurados en `Layout.tsx` que eliminan los errores 404 de favicon en el navegador.
 
 ### US-12: Seguridad y actualización de dependencias críticas
 - **ID:** US-12
@@ -184,11 +184,11 @@ Objetivo: Garantizar que la interfaz sea accesible, visualmente impecable, respo
 - **Historia:** Como equipo técnico, quiero mantener las dependencias del framework actualizadas frente a vulnerabilidades conocidas para garantizar un entorno seguro y confiable.
 - **Prioridad:** P0
 - **Dependencias:** Ninguna.
-- **Estado:** En curso (Next.js 16.4.0 en uso; actualización a 16.4.1/16.4.2 auditada y pendiente de ejecución).
+- **Estado:** Completada y verificada.
 - **Criterios de aceptación:**
-  1. Actualizar `next` a la versión corregida mínima 16.4.1 en `frontend-next/package.json` y `package-lock.json`.
-  2. `npm audit --omit=dev` no debe reportar vulnerabilidades de Next.js.
-  3. Los checks de `./scripts/dev-check.sh` deben pasar al 100%.
+  1. Actualizar `next` a la versión corregida oficial (Next.js 16.4.3) en `frontend-next/package.json` y `package-lock.json`.
+  2. `npm audit --omit=dev` reporta 0 vulnerabilidades.
+  3. Los checks de `./scripts/dev-check.sh` pasan al 100% (código 0, `All checks passed.`).
 
 ---
 

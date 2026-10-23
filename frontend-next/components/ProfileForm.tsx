@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createPerson } from '../lib/api';
+import { createPerson, getPerson, updatePerson } from '../lib/api';
 import { formatApiError } from '../lib/formatError';
 import { useRouter } from 'next/router';
 
@@ -10,33 +10,74 @@ export default function ProfileForm(){
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [existingPersonId, setExistingPersonId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traitsText, setTraitsText] = useState('');
   const [form, setForm] = useState<any>({
     full_name: '',
     location: '',
+    home_type: '',
+    home_size: '',
+    has_outdoor_space: false,
     activity_level: '',
     has_children: false,
     has_other_pets: false,
+    other_pets_details: '',
     preferred_cat_traits: [],
     time_available: '',
     time_outside: ''
   });
 
-  // Load draft once on mount (do not overwrite existing state if draft missing)
+  // Load existing profile from backend if person_id is in localStorage or router query,
+  // falling back to local draft
   useEffect(()=>{
-    try{
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if(raw){
-        const parsed = JSON.parse(raw);
-        if(parsed && typeof parsed === 'object'){
-          setForm((s:any)=>({...s, ...parsed}));
-          if(Array.isArray(parsed.preferred_cat_traits)) setTraitsText(parsed.preferred_cat_traits.join(', '));
+    const storedId = (typeof window !== 'undefined' && localStorage.getItem('catmatch_person_id')) || null;
+    if(storedId){
+      setExistingPersonId(storedId);
+      getPerson(storedId)
+        .then(p => {
+          if(p){
+            setForm((s:any)=>({
+              ...s,
+              full_name: p.full_name || '',
+              location: p.location || '',
+              home_type: p.home_type || '',
+              home_size: p.home_size || '',
+              has_outdoor_space: Boolean(p.has_outdoor_space),
+              activity_level: p.activity_level || '',
+              has_children: Boolean(p.has_children),
+              has_other_pets: Boolean(p.has_other_pets),
+              other_pets_details: typeof p.other_pets_details === 'string' ? p.other_pets_details : (p.other_pets_details ? JSON.stringify(p.other_pets_details) : ''),
+              preferred_cat_traits: Array.isArray(p.preferred_cat_traits) ? p.preferred_cat_traits : [],
+              time_available: p.time_available || '',
+              time_outside: p.time_outside || '',
+            }));
+            if(Array.isArray(p.preferred_cat_traits)){
+              setTraitsText(p.preferred_cat_traits.join(', '));
+            }
+          }
+        })
+        .catch(err => {
+          console.warn('Could not fetch existing person profile', err);
+          loadDraft();
+        });
+    } else {
+      loadDraft();
+    }
+
+    function loadDraft(){
+      try{
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if(raw){
+          const parsed = JSON.parse(raw);
+          if(parsed && typeof parsed === 'object'){
+            setForm((s:any)=>({...s, ...parsed}));
+            if(Array.isArray(parsed.preferred_cat_traits)) setTraitsText(parsed.preferred_cat_traits.join(', '));
+          }
         }
+      }catch(e){
+        console.warn('Could not read draft from localStorage', e);
       }
-    }catch(e){
-      // ignore parse errors and keep initial state
-      console.warn('Could not read draft from localStorage', e);
     }
   },[]);
 
@@ -110,27 +151,47 @@ export default function ProfileForm(){
 
     setLoading(true); setError(null);
     try{
-      // The API schema requires every field to be present (nullable); send null for those the form does not collect
-      const payload = {
-        bio: null, home_type: null, home_size: null, has_outdoor_space: null,
-        work_hours_per_day: null, other_pets_details: null, personality_traits: null,
-        ...form,
+      const payload: any = {
+        full_name: form.full_name || null,
+        location: form.location || null,
+        home_type: form.home_type || null,
+        home_size: form.home_size || null,
+        has_outdoor_space: Boolean(form.has_outdoor_space),
+        activity_level: form.activity_level || null,
+        has_children: Boolean(form.has_children),
+        has_other_pets: Boolean(form.has_other_pets),
+        other_pets_details: form.other_pets_details ? form.other_pets_details : null,
+        preferred_cat_traits: Array.isArray(form.preferred_cat_traits) ? form.preferred_cat_traits : null,
         time_available: form.time_available || null,
         time_outside: form.time_outside || null,
-        activity_level: form.activity_level || null,
       };
-      const created = await createPerson(payload);
-      if(created && (created as any).id){
-        try{ localStorage.setItem('catmatch_person_id',(created as any).id); }catch(e){ console.warn('Could not save person id', e); }
-        // Only remove draft after success
+
+      let resultId = existingPersonId;
+      if(existingPersonId){
+        // Actualizar perfil existente
+        const updated = await updatePerson(existingPersonId, payload);
+        if(updated && updated.id){
+          resultId = updated.id;
+        }
+      } else {
+        // Crear nuevo perfil
+        const created = await createPerson(payload);
+        if(created && created.id){
+          resultId = created.id;
+          try{ localStorage.setItem('catmatch_person_id', created.id); }catch(e){ console.warn('Could not save person id', e); }
+        }
+      }
+
+      if(resultId){
+        // Limpiar borrador local tras éxito
         try{ localStorage.removeItem(DRAFT_KEY); }catch(e){ console.warn('Could not remove draft', e); }
-        router.push(`/adopt/results?person_id=${encodeURIComponent((created as any).id)}`);
+        router.push(`/adopt/results?person_id=${encodeURIComponent(resultId)}`);
       }else{
-        setError('La creación devolvió un resultado inesperado');
+        setError('La operación devolvió un resultado inesperado');
       }
     }catch(e:any){
       // Prefer detailed error from API body if available
-      setError(formatApiError(e, 'Error al crear el perfil'));
+      setError(formatApiError(e, 'Error al guardar el perfil'));
     }finally{ setLoading(false); }
   }
 
@@ -156,6 +217,32 @@ export default function ProfileForm(){
         {step===2 && (
           <div>
             <div className="field">
+              <label htmlFor="home_type">Tipo de vivienda</label>
+              <select id="home_type" value={form.home_type} onChange={e=>update('home_type', e.target.value)}>
+                <option value=''>Selecciona tipo</option>
+                <option value='apartment'>Piso / Apartamento</option>
+                <option value='house'>Casa unifamiliar</option>
+                <option value='farm'>Finca / Casa de campo</option>
+                <option value='other'>Otro</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="home_size">Tamaño de la vivienda</label>
+              <select id="home_size" value={form.home_size} onChange={e=>update('home_size', e.target.value)}>
+                <option value=''>Selecciona tamaño</option>
+                <option value='small'>Pequeño (&lt; 50 m²)</option>
+                <option value='medium'>Mediano (50 - 90 m²)</option>
+                <option value='large'>Grande (&gt; 90 m²)</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="has_outdoor_space">¿Tiene espacio exterior protegido (balcón seguro, terraza o jardín)?</label>
+              <select id="has_outdoor_space" value={form.has_outdoor_space ? 'yes' : 'no'} onChange={e=>update('has_outdoor_space', e.target.value === 'yes')}>
+                <option value='no'>No</option>
+                <option value='yes'>Sí</option>
+              </select>
+            </div>
+            <div className="field">
               <label htmlFor="has_children">¿Tienes niños en casa?</label>
               <select id="has_children" value={form.has_children? 'yes':'no'} onChange={e=>update('has_children', e.target.value)}>
                 <option value='no'>No</option>
@@ -169,6 +256,12 @@ export default function ProfileForm(){
                 <option value='yes'>Sí</option>
               </select>
             </div>
+            {form.has_other_pets && (
+              <div className="field">
+                <label htmlFor="other_pets_details">Detalles de otras mascotas (especie, edad, carácter)</label>
+                <input id="other_pets_details" type="text" placeholder="Ej: 1 perro mediano tranquilo, 1 gato sociable" value={form.other_pets_details} onChange={e=>update('other_pets_details', e.target.value)} />
+              </div>
+            )}
           </div>
         )}
         {step===3 && (
@@ -213,8 +306,23 @@ export default function ProfileForm(){
             <section aria-labelledby="review-home" className="review-section">
               <h5 id="review-home" style={{margin:'0 0 8px 0'}}>2. Tu hogar</h5>
               <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <div><strong>Tipo de vivienda:</strong> {({
+                  apartment: 'Piso / Apartamento',
+                  house: 'Casa unifamiliar',
+                  farm: 'Finca / Casa de campo',
+                  other: 'Otro'
+                } as any)[form.home_type] || 'No especificado'}</div>
+                <div><strong>Tamaño:</strong> {({
+                  small: 'Pequeño (< 50 m²)',
+                  medium: 'Mediano (50 - 90 m²)',
+                  large: 'Grande (> 90 m²)'
+                } as any)[form.home_size] || 'No especificado'}</div>
+                <div><strong>Espacio exterior protegido:</strong> {form.has_outdoor_space ? 'Sí' : 'No'}</div>
                 <div><strong>¿Tienes niños?</strong> {form.has_children ? 'Sí' : 'No'}</div>
                 <div><strong>¿Tienes otras mascotas?</strong> {form.has_other_pets ? 'Sí' : 'No'}</div>
+                {form.has_other_pets && form.other_pets_details && (
+                  <div><strong>Detalles de otras mascotas:</strong> {form.other_pets_details}</div>
+                )}
               </div>
             </section>
 

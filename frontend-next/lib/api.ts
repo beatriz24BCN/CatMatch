@@ -1,5 +1,6 @@
 import { formatApiError } from './formatError';
 import type {
+  Cat,
   Person,
   CatsForPersonRequest,
   CatsForPersonResponse,
@@ -43,6 +44,22 @@ export async function createPerson(payload: Partial<Person>): Promise<Person> {
   return handleResponse<Person>(resp);
 }
 
+export async function getPerson(personId: string): Promise<Person> {
+  const url = buildUrl(`/api/persons/${encodeURIComponent(personId)}`);
+  const resp = await fetch(url, { method: 'GET' });
+  return handleResponse<Person>(resp);
+}
+
+export async function updatePerson(personId: string, payload: Partial<Person>): Promise<Person> {
+  const url = buildUrl(`/api/persons/${encodeURIComponent(personId)}`);
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Person>(resp);
+}
+
 export async function listCatsForPerson(payload: CatsForPersonRequest) : Promise<CatsForPersonResponse> {
   const url = buildUrl('/api/cats/for_person');
   const resp = await fetch(url, {
@@ -51,6 +68,19 @@ export async function listCatsForPerson(payload: CatsForPersonRequest) : Promise
     body: JSON.stringify(payload),
   });
   return handleResponse<CatsForPersonResponse>(resp);
+}
+
+export async function listCats(params?: { location?: string; age_stage?: string; activity_level?: string; limit?: number; offset?: number }) {
+  const qs = new URLSearchParams();
+  if (params?.location) qs.set('location', params.location);
+  if (params?.age_stage) qs.set('age_stage', params.age_stage);
+  if (params?.activity_level) qs.set('activity_level', params.activity_level);
+  if (params?.limit) qs.set('limit', String(params.limit));
+  if (params?.offset) qs.set('offset', String(params.offset));
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  const url = buildUrl(`/api/cats/${query}`);
+  const resp = await fetch(url, { method: 'GET' });
+  return handleResponse<Cat[]>(resp);
 }
 
 export async function getCat(catId: string) {
@@ -69,7 +99,7 @@ export async function evaluateMatch(payload: MatchEvaluateRequest): Promise<Matc
   return handleResponse<MatchEvaluateResponse>(resp);
 }
 
-export async function createAdoptionRequest(payload: { cat_id: string; contact_email: string; message?: string }) {
+export async function createAdoptionRequest(payload: { cat_id: string; contact_email: string; message?: string; person_id?: string; contact_phone?: string }) {
   const url = buildUrl('/api/adoption_requests/');
   const resp = await fetch(url, {
     method: 'POST',

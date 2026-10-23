@@ -103,13 +103,15 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
 
     if(t === 'health_status'){
       const hs = details?.cat_health_status || details?.health_status;
-      if(hs) return `Estado de salud: ${String(hs)}`;
+      if(hs && !/perfil ficticio/i.test(String(hs))) return `Estado de salud: ${String(hs)}`;
       return f.explanation || 'Estado de salud: información disponible.';
     }
 
     // default fallback
     return f.explanation || '';
   }
+
+  const cleanDescription = (cat?.description || '').replace(/^\[Perfil de demostración\]\s*/i, '').trim();
 
   return (
     <article aria-label={`Ficha resumen del gato ${cat?.name || 'sin nombre'}`} className="card result-card">
@@ -127,7 +129,7 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
             {cat.location ? ` · 📍 ${cat.location}` : ''}
           </div>
         </div>
-        {cat.description && <p className="result-desc">{cat.description}</p>}
+        {cleanDescription && <p className="result-desc">{cleanDescription}</p>}
         <div className="cat-actions result-actions">
           <Link href={`/adopt/cat/${cat.id}`} className="btn btn-secondary btn-sm" aria-label={`Ver ficha de ${cat.name || 'gato'}`}>Ver ficha</Link>
           <Link href={`/adopt/cat/${cat.id}/request`} className="btn btn-primary btn-sm" aria-label={`Solicitar adopción de ${cat.name || 'gato'}`}>Solicitar adopción</Link>

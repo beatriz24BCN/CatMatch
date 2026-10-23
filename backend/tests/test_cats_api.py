@@ -39,7 +39,12 @@ class CatsApiTestCase(unittest.TestCase):
         }
 
         # monkeypatch CRUD functions to avoid DB access
-        cats_router.crud.list_cats = lambda db, limit, offset: [self.fake_cat]
+        cats_router.crud.list_cats = lambda db, limit=100, offset=0, location=None, age_stage=None, activity_level=None: [
+            c for c in [self.fake_cat]
+            if (not location or location.lower() in c['location'].lower())
+            and (not age_stage or age_stage == c['age_stage'])
+            and (not activity_level or activity_level == c['activity_level'])
+        ]
         cats_router.crud.get_cat = lambda db, cid: self.fake_cat if cid == self.fake_cat['id'] else None
 
     def tearDown(self):
@@ -56,6 +61,17 @@ class CatsApiTestCase(unittest.TestCase):
         self.assertIsInstance(data, list)
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['name'], 'Whiskers')
+
+    def test_list_cats_with_filters(self):
+        # Match location
+        r = self.client.get('/api/cats?location=Shelter&age_stage=adult&activity_level=medium')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()), 1)
+
+        # Mismatch age_stage
+        r_empty = self.client.get('/api/cats?age_stage=kitten')
+        self.assertEqual(r_empty.status_code, 200)
+        self.assertEqual(len(r_empty.json()), 0)
 
     def test_get_cat_found(self):
         r = self.client.get(f"/api/cats/{self.fake_cat['id']}")

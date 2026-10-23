@@ -117,5 +117,64 @@ class PersonsApiTestCase(unittest.TestCase):
         resp = client.post('/api/persons/', json=payload)
         self.assertEqual(resp.status_code, 500)
 
+    def test_update_person_success(self):
+        from datetime import datetime
+        def fake_get(db, pid):
+            return type('P', (), {
+                "id": pid,
+                "full_name": "Bob",
+                "location": "City A",
+                "activity_level": "low",
+                "home_type": "apartment",
+                "home_size": "medium",
+                "has_outdoor_space": False,
+                "work_hours_per_day": 8,
+                "has_children": False,
+                "has_other_pets": False,
+                "other_pets_details": None,
+                "personality_traits": ["calm"],
+                "preferred_cat_traits": ["calm"],
+                "time_outside": "part_time",
+                "time_available": "evenings",
+                "bio": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            })()
+        def fake_update(db, pid, data):
+            return type('P', (), {
+                "id": pid,
+                "full_name": data.get("full_name", "Bob"),
+                "location": data.get("location", "City B"),
+                "activity_level": "medium",
+                "home_type": "apartment",
+                "home_size": "medium",
+                "has_outdoor_space": False,
+                "work_hours_per_day": 8,
+                "has_children": False,
+                "has_other_pets": False,
+                "other_pets_details": None,
+                "personality_traits": ["calm"],
+                "preferred_cat_traits": ["calm"],
+                "time_outside": "part_time",
+                "time_available": "evenings",
+                "bio": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            })()
+
+        persons_crud.get_person = fake_get
+        persons_crud.update_person = fake_update
+
+        resp = client.patch('/api/persons/00000000-0000-0000-0000-000000000010', json={"location": "City B", "activity_level": "medium"})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body.get('location'), "City B")
+        self.assertEqual(body.get('activity_level'), "medium")
+
+    def test_update_person_not_found(self):
+        persons_crud.get_person = lambda db, pid: None
+        resp = client.patch('/api/persons/missing', json={"location": "City B"})
+        self.assertEqual(resp.status_code, 404)
+
 if __name__ == '__main__':
     unittest.main()

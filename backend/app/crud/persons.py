@@ -34,4 +34,26 @@ def create_person(db, person_data: dict) -> Person:
     except Exception:
         db.rollback()
         raise
+def update_person(db, person_id: str, person_data: dict) -> Optional[Person]:
+    """Update an existing Person with provided fields and persist changes."""
+    stmt = select(Person).where(Person.id == person_id)
+    result = db.execute(stmt)
+    p = result.scalars().first()
+    if not p:
+        return None
+
+    for key, value in person_data.items():
+        if value is not None and (hasattr(Person, key) or hasattr(p, key)):
+            try:
+                setattr(p, key, value)
+            except Exception:
+                pass
+
+    try:
+        db.flush()
+        db.commit()
+        db.refresh(p)
+    except Exception:
+        db.rollback()
+        raise
     return p

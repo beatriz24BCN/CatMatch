@@ -24,6 +24,16 @@ export default function RequestForm(){
   },[id]);
 
   const [submitted, setSubmitted] = useState(false);
+  const [personId, setPersonId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const pid = localStorage.getItem('catmatch_person_id');
+      if (pid) setPersonId(pid);
+    } catch {
+      // ignore storage access error
+    }
+  }, []);
 
   function isValidEmail(v:string){
     // simple email validation
@@ -44,7 +54,12 @@ export default function RequestForm(){
     }
     setSending(true);
     try{
-      await createAdoptionRequest({ cat_id: id as string, contact_email: email, message });
+      await createAdoptionRequest({
+        cat_id: id as string,
+        contact_email: email,
+        message,
+        person_id: personId || undefined
+      });
       // show explicit confirmation only after the API confirms success
       setSubmitted(true);
     }catch(e:any){

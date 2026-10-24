@@ -171,3 +171,28 @@ export async function getMe(): Promise<UserRead | null> {
   }
   return handleResponse<UserRead>(resp);
 }
+
+// ==================== Asistente RAG ====================
+
+export interface AssistantSource {
+  title: string;
+  source_type: string;
+  url?: string;
+  snippet: string;
+}
+
+export interface AssistantChatResponse {
+  response: string;
+  sources: AssistantSource[];
+  suggested_cat_ids: string[];
+}
+
+export async function sendAssistantMessage(message: string, history: { role: string; content: string }[] = []): Promise<AssistantChatResponse> {
+  const url = buildUrl('/api/assistant/chat');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+  });
+  return handleResponse<AssistantChatResponse>(resp);
+}

@@ -5,7 +5,7 @@ import { CatMark } from './icons';
 import { getMe, logoutUser } from '../lib/api';
 import type { UserRead } from '../types/api';
 
-export default function Navbar() {
+export default function Navbar({ onToggleAssistant, isAssistantOpen }: { onToggleAssistant?: () => void; isAssistantOpen?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<UserRead | null>(null);
@@ -83,6 +83,21 @@ export default function Navbar() {
             <Link href="/auth/login" onClick={close}>
               Iniciar sesión
             </Link>
+          )}
+
+          {onToggleAssistant && (
+            <button
+              type="button"
+              onClick={() => {
+                onToggleAssistant();
+                close();
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              aria-expanded={isAssistantOpen}
+            >
+              <span>🐱</span> Asistente
+            </button>
           )}
 
           <Link href="/adopt/profile" className="btn btn-primary btn-sm" onClick={close}>

@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import CatTile from '../components/CatTile';
 import { CatSilhouette } from '../components/icons';
 import { formatApiError } from '../lib/formatError';
+import type { Cat } from '../types/api';
 
 const STEPS = [
   { title: 'Cuéntanos cómo vives', text: 'Responde unas pocas preguntas sobre tu hogar, tu tiempo y tu forma de ser. No necesitas crear una cuenta.' },
@@ -12,7 +13,7 @@ const STEPS = [
 ];
 
 export default function Home() {
-  const [cats, setCats] = useState<any[] | null>(null);
+  const [cats, setCats] = useState<Cat[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

@@ -230,3 +230,31 @@ Objetivo: Funcionalidades identificadas que quedan pospuestas formalmente para l
   4. Widget flotante interactivo en frontend accesible desde el Navbar, con cierre y reapertura sin recarga de página.
   5. Cero alucinaciones: las compatibilidades con niños y perros solo se afirman si están documentadas en la base de datos oficial.
   6. Suite de tests automatizados específica en `backend/tests/test_rag.py` y `test_assistant_api.py`.
+
+---
+
+## Épica 7: Calidad, Robustez y Preparación para Producción (EP-07 — Semana 4)
+
+Objetivo: Consolidar la robustez del frontend y backend, tipado estricto y documentación de despliegue en producción.
+
+### US-16: Calidad de código, tipado estricto y validaciones
+- **ID:** US-16
+- **Épica:** EP-07
+- **Historia:** Como desarrollador, quiero garantizar tipado estricto en el frontend y validaciones limpias en formularios para evitar errores en tiempo de ejecución.
+- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 4).
+- **Estado:** Completada y verificada.
+- **Criterios de aceptación:**
+  1. Tipado estricto de listas de gatos en componentes principales (ej. `Cat[]` en `pages/index.tsx` sin `any[]`).
+  2. Manejo de errores claro y amigable mediante `formatApiError()` en formularios públicos de adopción.
+  3. Verificación de compilación estricta TypeScript en producción (`next build`) con 0 errores.
+
+### US-17: Documentación de despliegue y producción
+- **ID:** US-17
+- **Épica:** EP-07
+- **Historia:** Como equipo técnico, quiero disponer de una guía exhaustiva de despliegue que documente variables obligatorias, seguridad de cookies, CORS y comandos de ejecución para entornos PaaS.
+- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 4).
+- **Estado:** Completada y verificada.
+- **Criterios de aceptación:**
+  1. Creación de `docs/deployment.md` documentando escenarios de dominio único vs dominios separados.
+  2. Especificación de variables de producción requeridas (`JWT_SECRET_KEY`, `DATABASE_URL`) sin incluir secretos en Git.
+  3. Comandos de arranque para FastAPI (`gunicorn`/`uvicorn`) y Next.js (`npm run build && npm run start`).

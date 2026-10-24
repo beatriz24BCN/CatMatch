@@ -157,13 +157,19 @@ Al cierre de la Semana 3, las prioridades originales del MVP han sido implementa
 5. **Autenticación y Cuentas (Extensión Semana 2/3):** Implementado opcionalmente con JWT (PBKDF2-HMAC-SHA256 y cookies HttpOnly) protegiendo las rutas administrativas y manteniendo el flujo público accesible sin registro.
 6. **Pipeline RAG y Asistente Flotante (Extensión Semana 3):** Implementado como motor de recuperación local Okapi BM25 sobre guías del refugio y catálogo de gatos, con endpoint `POST /api/assistant/chat` y widget interactivo en el frontend.
 
-## 15. Tareas Pendientes (Planificadas para Semanas Posteriores)
+## 15. Tareas Implementadas en Semana 4 (Cierre Técnico y Calidad)
+
+- **Tipado estricto:** Tipado `Cat[]` formalizado en `pages/index.tsx` eliminando tipos `any[]`.
+- **Validaciones de formulario:** Limpieza de espacios y validaciones en formularios públicos de adopción.
+- **Preparación para producción:** Documentación de arquitectura de despliegue, variables de entorno, CORS para dominios independientes y comandos de inicio en `docs/deployment.md`.
+
+## 16. Tareas Pendientes (Planificadas para Semanas Posteriores 5–6)
 
 - Normalización de `other_pets_details` si se requiere modelo relacional propio.
 - Historial de solicitudes y gestión de favoritos para adoptantes con cuenta registrada.
 - Integración opcional de modelos generativos comerciales (LLM externo) sobre la infraestructura RAG actual.
 
-## 16. Notas finales
+## 17. Notas finales
 
 Este documento recoge la intención funcional para la primera fase del MVP. Debe mantenerse como referencia para las migraciones y para validar que las decisiones técnicas respetan el diseño funcional aprobado.
 

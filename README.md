@@ -219,6 +219,7 @@ FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/d
 - **Backlog de Épicas e Historias de Usuario:** [docs/backlog.md](docs/backlog.md)
 - **Alcance Funcional Aprobado:** [docs/Prioridades_CatMatch.md](docs/Prioridades_CatMatch.md)
 - **Documentación del Asistente y RAG Local:** [docs/rag-assistant.md](docs/rag-assistant.md)
+- **Guía de Despliegue en Producción:** [docs/deployment.md](docs/deployment.md)
 - **Modelo de Datos y Vocabularios:** [docs/data_model.md](docs/data_model.md)
 - **Wireframes e Interfaces:** [docs/wireframes.md](docs/wireframes.md)
 - **Guía de Entorno de Desarrollo:** [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)

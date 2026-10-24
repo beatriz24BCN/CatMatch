@@ -146,7 +146,24 @@ El objetivo de la portada es explicar brevemente la misión, mostrar un acceso r
 - Definir la fórmula de compatibilidad y umbrales de colores.
 - Definir si en fases posteriores se normaliza other_pets_details en tabla propia.
 
-## 14. Notas finales
+## 14. Estado de Implementación al Cierre de la Semana 3
+
+Al cierre de la Semana 3, las prioridades originales del MVP han sido implementadas e integradas, complementadas con extensiones de seguridad y asistencia conversacional:
+
+1. **Entidades y Búsquedas (Prioridad 1):** Implementado en FastAPI y Next.js con filtros dinámicos por ubicación, nivel de actividad y etapa de edad en `/adopt`.
+2. **Formulario de Adopción (Prioridad 2):** Implementado con validación y almacenamiento seguro en `adoption_requests` en `/adopt/cat/[id]/request`.
+3. **Gestión de Solicitudes (Prioridad 3):** Implementado en `/admin/adoption-requests` con soporte para actualizar estados (`pending`, `reviewing`, etc.).
+4. **Matches bajo Demanda (Prioridad 4):** Implementado en `POST /api/cats/for_person` y visualizado en `/adopt/results` con desempate objetivo y detección de incompatibilidades.
+5. **Autenticación y Cuentas (Extensión Semana 2/3):** Implementado opcionalmente con JWT (PBKDF2-HMAC-SHA256 y cookies HttpOnly) protegiendo las rutas administrativas y manteniendo el flujo público accesible sin registro.
+6. **Pipeline RAG y Asistente Flotante (Extensión Semana 3):** Implementado como motor de recuperación local Okapi BM25 sobre guías del refugio y catálogo de gatos, con endpoint `POST /api/assistant/chat` y widget interactivo en el frontend.
+
+## 15. Tareas Pendientes (Planificadas para Semanas Posteriores)
+
+- Normalización de `other_pets_details` si se requiere modelo relacional propio.
+- Historial de solicitudes y gestión de favoritos para adoptantes con cuenta registrada.
+- Integración opcional de modelos generativos comerciales (LLM externo) sobre la infraestructura RAG actual.
+
+## 16. Notas finales
 
 Este documento recoge la intención funcional para la primera fase del MVP. Debe mantenerse como referencia para las migraciones y para validar que las decisiones técnicas respetan el diseño funcional aprobado.
 

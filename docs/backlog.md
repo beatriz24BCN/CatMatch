@@ -217,9 +217,16 @@ Objetivo: Funcionalidades identificadas que quedan pospuestas formalmente para l
 - **Prioridad:** Pospuesta (Fase 2).
 - **Estado:** Pendiente / Pospuesta.
 
-### US-15: Asistente de Matching potenciado por IA / RAG
+### US-15: Asistente de Adopción Responsable potenciado por RAG Local
 - **ID:** US-15
 - **Épica:** EP-06
-- **Historia:** Como adoptante, quiero recibir explicaciones generadas por un modelo de lenguaje enriquecido con recuperación de contexto (RAG) sobre la idoneidad del gato.
-- **Prioridad:** Pospuesta (Fase futura).
-- **Estado:** Pendiente / Pospuesta (no forma parte del MVP de las semanas 1-3).
+- **Historia:** Como persona visitante o adoptante, quiero consultar dudas sobre gatos y el proceso de adopción mediante un asistente conversacional que recupere información oficial fidedigna sin inventar datos.
+- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 3).
+- **Estado:** Completada y verificada.
+- **Criterios de aceptación:**
+  1. Pipeline RAG local basado en Okapi BM25 sin dependencias de pago ni claves externas.
+  2. Indexación híbrida de fichas oficiales de gatos (PostgreSQL) y guías del refugio (Markdown).
+  3. Endpoint `POST /api/assistant/chat` público que responde con citas a fuentes verificables y enlaces `/adopt/cat/[id]`.
+  4. Widget flotante interactivo en frontend accesible desde el Navbar, con cierre y reapertura sin recarga de página.
+  5. Cero alucinaciones: las compatibilidades con niños y perros solo se afirman si están documentadas en la base de datos oficial.
+  6. Suite de tests automatizados específica en `backend/tests/test_rag.py` y `test_assistant_api.py`.

@@ -11,8 +11,8 @@ CatMatch ayuda a encontrar gatos compatibles con el estilo de vida de una person
 - **Base de datos:** PostgreSQL 15 con extensiones y soporte JSONB / UUID
 - **Migraciones:** Alembic en `backend/alembic/`
 - **Contenerización y Red:** Docker, docker-compose (`docker-compose.yml`, `compose.codespaces.yml`) y scripts de red en `scripts/`
-- **Tests:** Pytest con suite automatizada en `backend/tests/` (50 tests pasando al 100%)
-- **IA / RAG:** Prevista para una fase posterior (NO forma parte de la primera tanda del MVP)
+- **Tests:** Pytest con suite automatizada en `backend/tests/` (68 tests pasando al 100%)
+- **IA / RAG:** Pipeline RAG local (Okapi BM25) y asistente conversacional flotante integrados en la Semana 3 (100% local, sin APIs de pago)
 
 2.1. Estructura del repositorio
 
@@ -112,13 +112,13 @@ Ver el diseño detallado: docs/data_model.md
 
 Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se implementarán en la segunda tanda.
 
-8. Segunda tanda / funcionalidades futuras
+8. Tareas planificadas para fases posteriores (Semanas 4-6)
 
-- Asociación de perfil `Person` a una cuenta registrada.
-- Favorites (marcar gatos) y gestión de solicitudes desde el panel del adoptante.
-- Integración avanzada con IA/RAG para mejorar la explicación y el scoring (fase posterior).
+- Normalización relacional de `other_pets_details` si se requiere modelo propio.
+- Panel de adoptante con historial de solicitudes y lista de Favoritos (marcar gatos con corazón).
+- Integración opcional de modelos generativos comerciales (LLM externo) sobre la infraestructura RAG local existente.
 
-9. Estado actual del desarrollo y Verificación
+9. Estado actual del desarrollo y Verificación (Semanas 1–3)
 
 - **Backend y Base de Datos:**
   - El backend está implementado con FastAPI (Python) estructurado en routers, schemas Pydantic v2, modelos SQLAlchemy y capa CRUD.
@@ -128,14 +128,18 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
   - Autorización por roles (`user` vs `admin`): protección de endpoints administrativos de solicitudes de adopción (`GET /api/adoption_requests/`, `PATCH /api/adoption_requests/{id}`).
   - Conservación íntegra del flujo público: catálogo de gatos, creación de perfil de adoptante, matching y envío de solicitudes de adopción son 100% accesibles sin cuenta.
   - Seed de datos de prueba (`backend/scripts/seed_demo_cats.py`) cargado con 6 perfiles representativos de gatos (Milo, Nala, Simba, Luna, Nube, Oreo) para pruebas completas de compatibilidad.
-  - Suite de pruebas automatizadas: **53 tests unitarios y de integración** con mocks en `backend/tests/` ejecutados y superados con éxito (100% passing).
+  - Pipeline RAG local (`backend/app/services/rag/`) con motor Okapi BM25 e indexación de guías del refugio y fichas oficiales.
+  - Endpoint de asistente conversacional público: `POST /api/assistant/chat`.
+  - Suite de pruebas automatizadas: **68 tests unitarios y de integración** en `backend/tests/` ejecutados y superados con éxito (100% passing).
 - **Frontend Next.js:**
   - Desarrollado en Next.js 16.4.3 (Pages Router) y TypeScript en `frontend-next/`.
   - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
   - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
+  - Asistente flotante de adopción (`frontend-next/components/ChatAssistant.tsx`) accesible desde el Navbar en todas las páginas sin recarga.
 - **Estado de seguridad y calidad visual:**
   - *Actualización de seguridad Next.js:* Actualizado a Next.js 16.4.3 en `package.json` y `package-lock.json`; `npm audit --omit=dev` reporta 0 vulnerabilidades.
   - *Identidad gráfica y navegación:* Portada limpia sin peticiones 404 a `hero-cat.jpg`, favicon `.ico` y `.svg` de marca configurados; ficha de gato con encuadre de imagen protegido (aspect ratio 4:3) y presentación de salud y cuidados.
+  - *Diseño de resultados del MVP:* Tarjetas de gatos en `/adopt/results` con composición equilibrada en tres columnas (fotografía destacada de 380px, bloque de información centrado y panel de compatibilidad con detalles desplegables).
 
 10. Entorno de desarrollo, configuración y ejecución
 
@@ -208,11 +212,13 @@ FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/d
 | `POST` | `/api/auth/login` | Iniciar sesión y emitir token Bearer JWT / cookie HttpOnly | 200 OK / 401 |
 | `POST` | `/api/auth/logout` | Cerrar sesión y limpiar cookie de acceso | 200 OK |
 | `GET` | `/api/auth/me` | Obtener identidad y rol del usuario autenticado | 200 OK / 401 |
+| `POST` | `/api/assistant/chat` | Conversación con el asistente RAG sobre catálogo y adopción | 200 OK / 422 |
 
 12. Documentación técnica y funcional
 
 - **Backlog de Épicas e Historias de Usuario:** [docs/backlog.md](docs/backlog.md)
 - **Alcance Funcional Aprobado:** [docs/Prioridades_CatMatch.md](docs/Prioridades_CatMatch.md)
+- **Documentación del Asistente y RAG Local:** [docs/rag-assistant.md](docs/rag-assistant.md)
 - **Modelo de Datos y Vocabularios:** [docs/data_model.md](docs/data_model.md)
 - **Wireframes e Interfaces:** [docs/wireframes.md](docs/wireframes.md)
 - **Guía de Entorno de Desarrollo:** [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)

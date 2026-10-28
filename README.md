@@ -79,7 +79,12 @@ El matching es un componente central del MVP. Su comportamiento funcional es:
 - Detectar combinaciones claramente no recomendables basadas en campos estructurados (por ejemplo, incompatibilidades directas entre otros animales y la tolerancia del gato).
 - Devolver una recomendación de compatibilidad acompañada de una explicación legible que detalle los factores considerados (por qué se recomienda o no la pareja).
 
-Importante: la primera tanda requiere producir un resultado de compatibilidad y una explicación cualitativa. La fórmula numérica, pesos, porcentajes, umbrales y colores (semáforo) quedan pendientes y NO deben inventarse ahora. Tampoco es necesario integrar RAG/IA en esta fase.
+Importante: en la fase inicial se priorizó producir un resultado cualitativo sin inventar porcentajes numéricos ficticios. En la mejora del flujo de adopción, se ha formalizado el **semáforo de compatibilidad de tres estados** en la interfaz:
+- 🟢 **Verde (`badge-ok`):** Compatible (`match: true`).
+- ⚪ **Gris neutro (`badge-info`):** Factor informativo (`match: null`).
+- 🔴 **Rojo (`badge-danger`):** Incompatibilidad confirmada (`match: false`).
+
+Asimismo, la regla de convivencia se aplica de forma simétrica y fidedigna: un hogar sin niños o sin mascotas satisface plenamente las necesidades de un gato que requiere un entorno sin niños o sin mascotas (validado con el caso de Oreo). Se mantiene la recomendación general conservadora (`recommended: None` salvo confirmación de incompatibilidad `recommended: False`), dejando la decisión definitiva al equipo del refugio.
 
 6. Modelo de datos (primera tanda)
 
@@ -130,12 +135,17 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
   - Seed de datos de prueba (`backend/scripts/seed_demo_cats.py`) cargado con 6 perfiles representativos de gatos (Milo, Nala, Simba, Luna, Nube, Oreo) para pruebas completas de compatibilidad.
   - Pipeline RAG local (`backend/app/services/rag/`) con motor Okapi BM25 e indexación de guías del refugio y fichas oficiales.
   - Endpoint de asistente conversacional público: `POST /api/assistant/chat`.
-  - Suite de pruebas automatizadas: **68 tests unitarios y de integración** en `backend/tests/` ejecutados y superados con éxito (100% passing).
+  - Suite de pruebas automatizadas: pruebas unitarias y de integración en `backend/tests/` ejecutadas y superadas con éxito, incluyendo validaciones específicas de compatibilidad y convivencia en `test_matching.py`.
 - **Frontend Next.js:**
   - Desarrollado en Next.js 16.4.3 (Pages Router) y TypeScript en `frontend-next/`.
   - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
   - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
-  - Asistente flotante de adopción (`frontend-next/components/ChatAssistant.tsx`) accesible desde el Navbar en todas las páginas sin recarga.
+  - **Matcher** (`frontend-next/components/ChatAssistant.tsx`): Asistente de compatibilidad accesible desde el Navbar como entrada principal al matching, con extracción de preferencias conversacionales y acceso directo a `/adopt/results`.
+- **Matcher y Matching Orientado a la Adopción:**
+  - *Navegación simplificada:* Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a **Matcher** como guía conversacional principal.
+  - *Matching sin registro obligatorio:* Los visitantes pueden dialogar con Matcher y obtener recomendaciones completas en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de registrarse.
+  - *Semáforo visual de 3 estados:* Factores coloreados como verde (compatible), gris neutro (informativo) y rojo (incompatibilidad).
+  - *Corrección de convivencia (caso Oreo):* Regla simétrica para gatos con necesidades de hogar exclusivo (un hogar sin niños ni mascotas satisface las necesidades de gatos no tolerantes con niños/mascotas).
 - **Estado de seguridad y calidad visual:**
   - *Actualización de seguridad Next.js:* Actualizado a Next.js 16.4.3 en `package.json` y `package-lock.json`; `npm audit --omit=dev` reporta 0 vulnerabilidades.
   - *Identidad gráfica y navegación:* Portada limpia sin peticiones 404 a `hero-cat.jpg`, favicon `.ico` y `.svg` de marca configurados; ficha de gato con encuadre de imagen protegido (aspect ratio 4:3) y presentación de salud y cuidados.

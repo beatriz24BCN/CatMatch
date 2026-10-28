@@ -102,5 +102,61 @@ class MatchingServiceTestCase(unittest.TestCase):
         overlap = [f for f in result["factors"] if f["type"] == "personality_overlap"]
         self.assertEqual(len(overlap), 0)
 
+    def test_oreo_compatible_in_home_without_children_and_pets(self):
+        # Oreo is not good with children and not good with dogs
+        oreo = {
+            "name": "Oreo",
+            "good_with_children": False,
+            "good_with_dogs": False,
+            "activity_level": "medium",
+            "location": "Barcelona"
+        }
+        # Home with no children and no other pets satisfies Oreo's specific needs
+        person = {
+            "has_children": False,
+            "has_other_pets": False,
+            "location": "Sant miquel de balanya"
+        }
+        result = evaluate_match(person, oreo)
+        # Conservative overall recommendation is kept
+        self.assertIsNone(result["recommended"])
+
+        # Factors: both children and pets must be green (match=True) because the home satisfies his needs
+        children_factor = next(f for f in result["factors"] if f["type"] == "good_with_children")
+        self.assertTrue(children_factor["match"] is True)
+
+        pets_factor = next(f for f in result["factors"] if f["type"] == "good_with_other_pets")
+        self.assertTrue(pets_factor["match"] is True)
+
+    def test_oreo_incompatible_when_home_has_children(self):
+        oreo = {
+            "name": "Oreo",
+            "good_with_children": False,
+            "good_with_dogs": False,
+        }
+        person = {
+            "has_children": True,
+            "has_other_pets": False,
+        }
+        result = evaluate_match(person, oreo)
+        self.assertFalse(result["recommended"])
+        children_factor = next(f for f in result["factors"] if f["type"] == "good_with_children")
+        self.assertTrue(children_factor["match"] is False)
+
+    def test_oreo_incompatible_when_home_has_other_pets(self):
+        oreo = {
+            "name": "Oreo",
+            "good_with_children": False,
+            "good_with_dogs": False,
+        }
+        person = {
+            "has_children": False,
+            "has_other_pets": True,
+        }
+        result = evaluate_match(person, oreo)
+        self.assertFalse(result["recommended"])
+        pets_factor = next(f for f in result["factors"] if f["type"] == "good_with_other_pets")
+        self.assertTrue(pets_factor["match"] is False)
+
 if __name__ == "__main__":
     unittest.main()

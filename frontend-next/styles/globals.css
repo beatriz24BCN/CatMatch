@@ -13,6 +13,8 @@
   --danger: #a4332b;
   --danger-bg: #fbeceb;
   --warn-bg: #fdf3dc;
+  --info-bg: #eeece6;
+  --info-ink: #57574d;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 6px 20px rgba(31, 61, 43, 0.08);
@@ -161,6 +163,8 @@ img { max-width: 100%; display: block; }
 .badge-warn { background: var(--warn-bg); color: #7a5a10; }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-ok { background: var(--green-100); color: var(--green-900); }
+.badge-info,
+.badge-neutral { background: var(--info-bg); color: var(--info-ink); }
 
 /* Result card (matching) */
 .result-card {

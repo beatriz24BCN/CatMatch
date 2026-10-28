@@ -56,7 +56,10 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
         if(personHas) return 'No recomendado: este gato no es apto con niños y has indicado que tienes niños en casa.';
         return 'No recomendado para hogares con niños.';
       }
-      if(f.match === true) return 'Apto con niños.';
+      if(f.match === true){
+        if(!personHas && !catOk) return 'Hogar sin niños: compatible con las necesidades del gato.';
+        return 'Apto con niños.';
+      }
       return f.explanation || 'Compatibilidad con niños: información no concluyente.';
     }
 
@@ -67,7 +70,10 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
         if(personHas) return 'No recomendado: este gato no es apto con otras mascotas y has indicado que tienes mascotas.';
         return 'No recomendado para hogares con otras mascotas.';
       }
-      if(f.match === true) return 'Apto con otras mascotas.';
+      if(f.match === true){
+        if(!personHas && !catOk) return 'Hogar sin otras mascotas: compatible con las necesidades del gato.';
+        return 'Apto con otras mascotas.';
+      }
       return f.explanation || 'Compatibilidad con otras mascotas: información no concluyente.';
     }
 
@@ -146,7 +152,7 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
                 <div key={idx} className="factor">
                   <div className="factor-head">
                     <span>{prettyName(f.type)}</span>
-                    <span className={`badge ${f.match === false ? 'badge-danger' : f.match === true ? 'badge-ok' : 'badge-warn'}`}>
+                    <span className={`badge ${f.match === false ? 'badge-danger' : f.match === true ? 'badge-ok' : 'badge-info'}`}>
                       {f.match === false ? 'Incompatibilidad' : f.match === true ? 'Compatible' : 'Informativo'}
                     </span>
                   </div>

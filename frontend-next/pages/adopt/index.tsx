@@ -54,10 +54,9 @@ export default function AdoptIndex(){
             </p>
           </div>
           <div className="btn-row">
-            <Link href="/adopt/profile" className="btn btn-primary">
-              {hasProfile ? 'Editar mi perfil' : 'Crear mi perfil'}
+            <Link href="/adopt/results" className="btn btn-primary">
+              Recomendaciones de compatibilidad
             </Link>
-            {hasProfile && <Link href="/adopt/results" className="btn btn-secondary">Mis recomendaciones</Link>}
           </div>
         </div>
 

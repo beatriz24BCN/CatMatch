@@ -41,10 +41,17 @@ def evaluate_match(person, cat):
             },
         })
     elif has_children is not None and cat_good_with_children is not None:
+        # Compatible if cat is good with children OR if the home has no children
+        is_match = True if (cat_good_with_children or has_children is False) else None
+        explanation = (
+            "Hogar sin niños adecuado para el gato."
+            if (has_children is False and cat_good_with_children is False)
+            else "Compatibilidad por convivencia con niños."
+        )
         factors.append({
             "type": "good_with_children",
-            "match": True if cat_good_with_children else None,
-            "explanation": "Compatibilidad por convivencia con niños.",
+            "match": is_match,
+            "explanation": explanation,
             "details": {
                 "person_has_children": bool(has_children),
                 "cat_good_with_children": bool(cat_good_with_children),
@@ -66,10 +73,17 @@ def evaluate_match(person, cat):
             },
         })
     elif has_other_pets is not None and cat_good_with_dogs is not None:
+        # Compatible if cat is good with dogs OR if the home has no other pets
+        is_match = True if (cat_good_with_dogs or has_other_pets is False) else None
+        explanation = (
+            "Hogar sin otras mascotas adecuado para el gato."
+            if (has_other_pets is False and cat_good_with_dogs is False)
+            else "Compatibilidad con otras mascotas en el hogar (si aplica)."
+        )
         factors.append({
             "type": "good_with_other_pets",
-            "match": True if cat_good_with_dogs else None,
-            "explanation": "Compatibilidad con otras mascotas en el hogar (si aplica).",
+            "match": is_match,
+            "explanation": explanation,
             "details": {
                 "person_has_other_pets": bool(has_other_pets),
                 "cat_good_with_dogs": bool(cat_good_with_dogs),

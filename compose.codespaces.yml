@@ -27,14 +27,13 @@ services:
     image: catmatch-backend:latest
     container_name: catmatch-backend-perm
     restart: unless-stopped
-    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/backend"]
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-catmatch}}
-      PYTHONPATH: /src
     ports:
       - "8001:8000"
     volumes:
-      - /workspaces/CatMatch:/src:ro
+      - /workspaces/CatMatch/backend:/app/backend:ro
     networks:
       - catmatch-net
     depends_on:

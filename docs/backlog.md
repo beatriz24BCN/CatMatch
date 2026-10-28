@@ -217,19 +217,21 @@ Objetivo: Funcionalidades identificadas que quedan pospuestas formalmente para l
 - **Prioridad:** Pospuesta (Fase 2).
 - **Estado:** Pendiente / Pospuesta.
 
-### US-15: Asistente de Adopción Responsable potenciado por RAG Local
+### US-15: Matcher — Asistente de Adopción Responsable y Guía de Compatibilidad
 - **ID:** US-15
 - **Épica:** EP-06
-- **Historia:** Como persona visitante o adoptante, quiero consultar dudas sobre gatos y el proceso de adopción mediante un asistente conversacional que recupere información oficial fidedigna sin inventar datos.
-- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 3).
+- **Historia:** Como persona visitante o adoptante, quiero consultar dudas sobre gatos y el proceso de adopción mediante un asistente conversacional (Matcher) que recupere información oficial fidedigna y conecte mis preferencias con el sistema de compatibilidad sin exigir registro.
+- **Prioridad:** P1 (Entregable GeekFORCE Labs Semanas 3 y 4).
 - **Estado:** Completada y verificada.
 - **Criterios de aceptación:**
   1. Pipeline RAG local basado en Okapi BM25 sin dependencias de pago ni claves externas.
   2. Indexación híbrida de fichas oficiales de gatos (PostgreSQL) y guías del refugio (Markdown).
   3. Endpoint `POST /api/assistant/chat` público que responde con citas a fuentes verificables y enlaces `/adopt/cat/[id]`.
-  4. Widget flotante interactivo en frontend accesible desde el Navbar, con cierre y reapertura sin recarga de página.
-  5. Cero alucinaciones: las compatibilidades con niños y perros solo se afirman si están documentadas en la base de datos oficial.
-  6. Suite de tests automatizados específica en `backend/tests/test_rag.py` y `test_assistant_api.py`.
+  4. Widget flotante interactivo en frontend accesible como entrada principal desde el botón «🐱 Matcher» en el Navbar.
+  5. Barra de acción directa: *«¡Encuentra a tu compañero ideal! Descubre tus gatos compatibles y da el primer paso hacia la adopción»* con botón *«Ver mis matches →»* hacia `/adopt/results`.
+  6. Transmisión cliente de preferencias conversacionales (`extractPreferencesFromMessages`) al motor de matching (`/api/cats/for_person`) sin requerir cuenta previa.
+  7. Cero alucinaciones: las compatibilidades con niños y perros solo se afirman si están documentadas en la base de datos oficial.
+  8. Suite de tests automatizados específica en `backend/tests/test_rag.py` y `test_assistant_api.py`.
 
 ---
 

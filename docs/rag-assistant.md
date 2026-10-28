@@ -1,12 +1,12 @@
-# CatMatch — Documentación Técnica del Sistema RAG y Asistente de Adopción
+# CatMatch — Documentación Técnica del Sistema RAG y Matcher
 
-Este documento detalla la arquitectura, algoritmos, fuentes y endpoints del **Pipeline RAG local** y el **Asistente de Adopción Responsable** implementados en CatMatch (Semana 3).
+Este documento detalla la arquitectura, algoritmos, fuentes y endpoints del **Pipeline RAG local** y el asistente **Matcher (Guía de Compatibilidad)** implementados en CatMatch (Semanas 3 y 4).
 
 ---
 
 ## 1. Objetivo y Filosofía de Diseño
 
-El asistente de CatMatch ofrece una experiencia conversacional guiada para visitantes (con o sin cuenta) que desean explorar el catálogo y resolver dudas sobre adopción responsable, preparación del hogar y convivencia con otros animales.
+**Matcher** ofrece una experiencia conversacional guiada para visitantes (con o sin cuenta) que actúa como punto de entrada al sistema de compatibilidad de CatMatch. Permite explorar el catálogo, resolver dudas sobre adopción responsable y conectar las preferencias del adoptante con el motor de matching.
 
 ### Principios Fundamentales:
 1. **Separación estricta entre RAG y Matching:**
@@ -95,15 +95,17 @@ Documentos estructurados en Markdown:
 
 ---
 
-## 5. Componente Frontend: Asistente Flotante
+## 5. Componente Frontend: Matcher
 
 - **Ubicación:** `frontend-next/components/ChatAssistant.tsx`.
-- **Integración:** Montado en `Layout.tsx` y accesible desde el botón «🐱 Asistente» en el `Navbar.tsx`.
+- **Integración:** Montado en `Layout.tsx` y accesible como punto de entrada principal desde el botón «🐱 Matcher» en el `Navbar.tsx`.
 - **Características:**
-  - Panel flotante responsive anclado en la esquina inferior derecha (330x440 px, adaptado a 100vw en móviles).
+  - Panel flotante responsive anclado en la esquina inferior derecha con encabezado «Matcher — Compatibilidad».
   - Botón visible «✕» de cierre y reapertura sin recarga de página.
   - Parseo de enlaces Markdown a componentes `<Link>` nativos de Next.js.
-  - Sugerencias rápidas clicables (*«Busco un gato tranquilo»*, *«Tengo otras mascotas»*, *«¿Cómo funciona la adopción?»*).
+  - Sugerencias rápidas de convivencia (*«Busco un gato tranquilo para piso»*, *«Tengo niños en casa»*, *«Convivo con perro u otra mascota»*, *«¿Cómo funciona la adopción?»*).
+  - Barra de acción integrada: *«¡Encuentra a tu compañero ideal! Descubre tus gatos compatibles y da el primer paso hacia la adopción»* con botón *«Ver mis matches →»*.
+  - Extracción cliente de preferencias (`extractPreferencesFromMessages`): analiza el diálogo (ubicación, niños, mascotas, nivel de actividad y rasgos) y lo almacena en el borrador local (`catmatch_profile_draft`) o sincroniza un perfil anónimo para evaluar el catálogo en `/adopt/results` sin exigir registro previo.
 
 ---
 
@@ -112,3 +114,15 @@ Documentos estructurados en Markdown:
 El pipeline RAG y el asistente disponen de tests automatizados dedicados en:
 - `backend/tests/test_rag.py`: Comprueba el algoritmo BM25, carga de guías, expansión léxica y priorización de documentos.
 - `backend/tests/test_assistant_api.py`: Comprueba el endpoint público, validaciones de entrada, formato de edad en español, citas de fuentes y exclusión de gatos incompatibles.
+
+---
+
+## 7. Alcance Comprobado y Limitaciones Pendientes
+
+- **Funcionalidades comprobadas:**
+  - Diálogo conversacional guiado con RAG local sin dependencias externas de pago.
+  - Citas oficiales fidedignas y enlaces directos a fichas (`/adopt/cat/[id]`).
+  - Extracción de intenciones y preferencias del chat hacia la vista de recomendaciones `/adopt/results`.
+  - Acceso al matching completo sin registro previo obligatorio.
+- **Limitaciones pendientes:**
+  - La extracción de preferencias en el cliente utiliza reglas de reconocimiento léxico e intenciones; el formulario detallado en `/adopt/profile` sigue estando disponible para usuarios que prefieran definir un perfil cuantitativo completo paso a paso.

@@ -92,17 +92,13 @@ export default function Navbar({ onToggleAssistant, isAssistantOpen }: { onToggl
                 onToggleAssistant();
                 close();
               }}
-              className="btn btn-secondary btn-sm"
+              className="btn btn-primary btn-sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               aria-expanded={isAssistantOpen}
             >
-              <span>🐱</span> Asistente
+              <span>🐱</span> Matcher
             </button>
           )}
-
-          <Link href="/adopt/profile" className="btn btn-primary btn-sm" onClick={close}>
-            Crear mi perfil
-          </Link>
         </div>
       </nav>
     </header>

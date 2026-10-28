@@ -143,7 +143,7 @@ El objetivo de la portada es explicar brevemente la misión, mostrar un acceso r
 ## 13. Decisiones pendientes (no implementadas)
 
 - Decidir si imponer ENUMs en BD para age_stage y activity_level.
-- Definir la fórmula de compatibilidad y umbrales de colores.
+- Definir la fórmula de compatibilidad y umbrales de colores *(resuelto en el frontend mediante semáforo cualitativo de 3 estados: verde, gris y rojo)*.
 - Definir si en fases posteriores se normaliza other_pets_details en tabla propia.
 
 ## 14. Estado de Implementación al Cierre de la Semana 3
@@ -169,9 +169,21 @@ Al cierre de la Semana 3, las prioridades originales del MVP han sido implementa
 - Historial de solicitudes y gestión de favoritos para adoptantes con cuenta registrada.
 - Integración opcional de modelos generativos comerciales (LLM externo) sobre la infraestructura RAG actual.
 
-## 17. Notas finales
+## 17. Unificación de navegación y matching orientado a la adopción
 
-Este documento recoge la intención funcional para la primera fase del MVP. Debe mantenerse como referencia para las migraciones y para validar que las decisiones técnicas respetan el diseño funcional aprobado.
+En la evolución de CatMatch se ha consolidado el flujo orientado a la adopción responsable:
+
+1. **Unificación de entrada (Matcher):** Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a Matcher (`🐱 Matcher`) como el punto de acceso principal a la compatibilidad.
+2. **Matching sin registro:** Los visitantes pueden obtener recomendaciones completas directamente desde Matcher o en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de crear cuenta previa.
+3. **Semáforo cualitativo de 3 estados:**
+   - 🟢 Verde (`badge-ok`): Compatible (`match: true`).
+   - ⚪ Gris neutro (`badge-info`): Factor informativo (`match: null`).
+   - 🔴 Rojo (`badge-danger`): Incompatibilidad confirmada (`match: false`).
+4. **Convivencia simétrica (caso Oreo):** Se corrigió la regla de evaluación en `backend/app/services/matching.py` para que un hogar sin niños ni mascotas sea evaluado como compatible con las necesidades de un gato no apto con niños/mascotas, conservando la estricta protección de incompatibilidad cuando sí los hay.
+
+## 18. Notas finales
+
+Este documento recoge la intención funcional para la primera fase del MVP y sus ampliaciones aprobadas. Debe mantenerse como referencia para las migraciones y para validar que las decisiones técnicas respetan el diseño funcional aprobado.
 
 --
 

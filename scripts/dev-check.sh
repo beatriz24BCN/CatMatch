@@ -19,6 +19,17 @@ api_list() { # url outfile
     || { echo "HTTP 200 but body is not a JSON list: $(head -c 120 "$2")"; return 1; }
 }
 
+echo "[dev-check] Docker/containerd:"
+DOCKERD_ARGS=$(ps -o args= -C dockerd 2>/dev/null | head -n1 || true)
+if [ -z "$DOCKERD_ARGS" ]; then
+  fail "dockerd is not running"
+elif ! [[ " $DOCKERD_ARGS " =~ [[:space:]]--containerd(=|[[:space:]]+)/run/containerd/containerd\.sock[[:space:]] ]]; then
+  fail "dockerd is not connected to the system containerd (expected --containerd /run/containerd/containerd.sock; got: $DOCKERD_ARGS). RWLayer errors expected. See docs/CATMATCH_RECOVERY.md (section 10)"
+else
+  ok "dockerd uses system containerd (/run/containerd/containerd.sock)"
+fi
+
+echo
 echo "[dev-check] Docker containers and status:"
 docker ps -a --format '  - {{.Names}}: {{.Status}} ({{.Ports}})'
 

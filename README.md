@@ -183,6 +183,8 @@ El entorno de desarrollo en Codespaces cuenta con scripts conservadores y no des
    ```
    *Este script inicia los contenedores existentes sin recrearlos, aplica la regla de red necesaria para Docker, comprueba PostgreSQL y levanta Next.js en el puerto 3000 si está libre.*
 
+   Puertos: **3000** (Next.js), **5432** (PostgreSQL) y **8001** (backend). Estado actual, limitaciones tras reiniciar el Codespace y error `RWLayer is unexpectedly nil`: ver [docs/CATMATCH_RECOVERY.md](docs/CATMATCH_RECOVERY.md).
+
 2. **Comprobación de salud del entorno (solo lectura):**
    ```bash
    ./scripts/dev-check.sh

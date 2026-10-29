@@ -10,6 +10,22 @@ from .config import settings
 # Algoritmo y configuración de hashing según recomendaciones OWASP (PBKDF2-HMAC-SHA256, 600.000 iteraciones)
 PBKDF2_ITERATIONS = 600000
 ALGORITHM = "HS256"
+# Claim JWT con la versión de credenciales del usuario (users.token_version).
+TOKEN_VERSION_CLAIM = "ver"
+
+
+def user_token_version(user: Any) -> int:
+    return getattr(user, "token_version", None) or 0
+
+
+def hash_reset_token(raw_token: str) -> str:
+    """Hash SHA-256 (hex) de un token de recuperación. Es lo único que se guarda en BD."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def generate_reset_token() -> str:
+    """Token de recuperación aleatorio (256 bits, URL-safe)."""
+    return secrets.token_urlsafe(32)
 
 def get_password_hash(password: str) -> str:
     """Calcula el hash de la contraseña usando PBKDF2-HMAC-SHA256 y un salt criptográfico."""

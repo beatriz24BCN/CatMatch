@@ -11,7 +11,7 @@ CatMatch ayuda a encontrar gatos compatibles con el estilo de vida de una person
 - **Base de datos:** PostgreSQL 15 con extensiones y soporte JSONB / UUID
 - **Migraciones:** Alembic en `backend/alembic/`
 - **Contenerización y Red:** Docker, docker-compose (`docker-compose.yml`, `compose.codespaces.yml`) y scripts de red en `scripts/`
-- **Tests:** Pytest con suite automatizada en `backend/tests/` (68 tests pasando al 100%)
+- **Tests:** Suite automatizada en `backend/tests/` (ejecución y estado actual en el apartado 10.4)
 - **IA / RAG:** Pipeline RAG local (Okapi BM25) y asistente conversacional flotante integrados en la Semana 3 (100% local, sin APIs de pago)
 
 2.1. Estructura del repositorio
@@ -127,9 +127,13 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 
 - **Backend y Base de Datos:**
   - El backend está implementado con FastAPI (Python) estructurado en routers, schemas Pydantic v2, modelos SQLAlchemy y capa CRUD.
-  - Base de datos PostgreSQL en contenedor `catmatch-db-recover` con migraciones Alembic (`0003_add_users_table`) aplicadas y al día.
+  - Base de datos PostgreSQL en contenedor `catmatch-db-recover` con migraciones Alembic aplicadas hasta `0004_password_reset` (head). La 0004 es solo aditiva: añade `users.token_version` (entero, por defecto 0) y la tabla `password_reset_tokens`, sin modificar datos existentes.
   - Tabla `users` implementada con hashing seguro PBKDF2-HMAC-SHA256 (600.000 iteraciones) e índices únicos en `email`.
   - Autenticación JWT mediante tokens firmados HMAC-SHA256 y soporte para cookies `HttpOnly` (`catmatch_token`).
+  - «Recordarme» (`remember_me`, opcional, solo `true`/`false`): sin marcar, la cookie es de sesión (se borra al cerrar el navegador) y el token caduca a los 60 min; marcado, la cookie y su token duran `REMEMBER_ME_EXPIRE_DAYS` (30 días). El token largo solo viaja en la cookie `HttpOnly`; el JSON de respuesta siempre contiene el token de 60 min.
+  - Recuperación de contraseña («¿Has olvidado tu contraseña?» → `/auth/forgot-password`): el backend genera un token aleatorio (`secrets.token_urlsafe`), guarda solo su hash SHA-256 en `password_reset_tokens`, caduca a los `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` (30 min) y se consume una sola vez de forma atómica. El enlace del correo lleva el token en el fragmento (`/auth/reset-password#token=…`), que no se envía al servidor ni queda en logs. La respuesta de solicitud es siempre genérica y no revela si el correo existe; solo se admite una solicitud por cuenta cada `PASSWORD_RESET_MIN_INTERVAL_SECONDS` (60 s).
+  - Invalidación de sesiones: cada JWT incluye la versión `ver` de `users.token_version`. Al restablecer la contraseña, la versión se incrementa en la misma transacción, por lo que todos los tokens emitidos antes (incluidos los de «Recordarme») dejan de ser válidos.
+  - Limitación: no hay revocación individual de sesiones. El logout solo borra la cookie del navegador; un token copiado sigue siendo válido hasta su caducidad, salvo que se restablezca la contraseña o se desactive la cuenta (`is_active=false`). Tampoco hay limitación de solicitudes por IP.
   - Autorización por roles (`user` vs `admin`): protección de endpoints administrativos de solicitudes de adopción (`GET /api/adoption_requests/`, `PATCH /api/adoption_requests/{id}`).
   - Conservación íntegra del flujo público: catálogo de gatos, creación de perfil de adoptante, matching y envío de solicitudes de adopción son 100% accesibles sin cuenta.
   - Seed de datos de prueba (`backend/scripts/seed_demo_cats.py`) cargado con 6 perfiles representativos de gatos (Milo, Nala, Simba, Luna, Nube, Oreo) para pruebas completas de compatibilidad.
@@ -139,7 +143,7 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 - **Frontend Next.js:**
   - Desarrollado en Next.js 16.4.3 (Pages Router) y TypeScript en `frontend-next/`.
   - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
-  - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`) y panel administrativo (`/admin/adoption-requests`).
+  - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`), recuperación de contraseña (`/auth/forgot-password` y `/auth/reset-password`) y panel administrativo (`/admin/adoption-requests`).
   - **Matcher** (`frontend-next/components/ChatAssistant.tsx`): Asistente de compatibilidad accesible desde el Navbar como entrada principal al matching, con extracción de preferencias conversacionales y acceso directo a `/adopt/results`.
 - **Matcher y Matching Orientado a la Adopción:**
   - *Navegación simplificada:* Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a **Matcher** como guía conversacional principal.
@@ -171,6 +175,26 @@ Las variables de entorno se definen en el archivo `.env` en la raíz del proyect
 | `BACKEND_URL` | URL de destino usada por el proxy de Next.js | Opcional | `http://localhost:8001` (por defecto en Next.js) |
 | `JWT_SECRET_KEY` | Clave secreta para firma criptográfica HMAC-SHA256 de tokens JWT | Opcional en dev (genera efímera), obligatoria en prod | `cambiar_por_un_secreto_largo_y_aleatorio_en_produccion` |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Tiempo de validez del token de acceso JWT en minutos | Opcional | `60` |
+| `REMEMBER_ME_EXPIRE_DAYS` | Duración en días de la cookie y el token cuando se marca «Recordarme» | Opcional | `30` |
+| `FRONTEND_BASE_URL` | URL pública del frontend usada en el enlace de recuperación (http/https, sin barra final) | Sí para recuperar contraseña | `https://<codespace>-3000.app.github.dev` |
+| `SMTP_HOST` / `SMTP_PORT` | Servidor y puerto SMTP del proveedor de correo | Sí para recuperar contraseña (`SMTP_PORT` por defecto `587`) | `smtp.proveedor.example` / `587` |
+| `SMTP_SECURITY` | `starttls`, `ssl` o `none` (solo servidores de prueba locales) | Opcional | `starttls` |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | Credenciales SMTP (deben definirse las dos o ninguna) | Según el proveedor | — |
+| `SMTP_FROM` | Remitente de los correos | Sí para recuperar contraseña | `CatMatch <no-reply@tu-dominio.example>` |
+| `SMTP_TIMEOUT_SECONDS` | Tiempo máximo de conexión SMTP | Opcional | `10` |
+| `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` | Caducidad del enlace de recuperación | Opcional | `30` |
+| `PASSWORD_RESET_MIN_INTERVAL_SECONDS` | Espera mínima entre solicitudes de recuperación por cuenta | Opcional | `60` |
+| `PASSWORD_RESET_DEV_OUTBOX` | **Solo desarrollo.** Guarda el enlace de recuperación en un buzón en memoria en lugar de enviar correo. Se ignora si `env` no es `dev` o `test` | Opcional | `false` |
+
+**Configurar el correo de recuperación.** Sin `SMTP_HOST`, `SMTP_FROM` y `FRONTEND_BASE_URL`, `POST /api/auth/password-reset/request` responde `503` a todas las solicitudes y no envía nada; el log del backend solo indica los nombres de las variables que faltan. En este Codespace el backend (`catmatch-backend-perm`) no lee ningún `.env`: las variables deben añadirse al servicio del backend en `compose.codespaces.yml` (o a un `env_file` no versionado) y el contenedor debe recrearse para que las use. Recrear el contenedor requiere autorización previa (ver `docs/CATMATCH_RECOVERY.md`). No guardes credenciales SMTP en archivos versionados.
+
+Pasos para probar el envío real (pendiente: todavía no se ha configurado ningún proveedor ni enviado ningún correo real):
+1. Obtener del proveedor de correo el host, puerto, modo de seguridad, usuario/contraseña y un remitente verificado.
+2. Definir `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` y `FRONTEND_BASE_URL` (la URL del puerto 3000 que muestra la pestaña **Ports**) en el entorno del backend, sin versionar las credenciales, y recrear solo el backend (con autorización): `docker compose -f compose.codespaces.yml up -d --no-deps backend`.
+3. Ejecutar `./scripts/dev-check.sh`, solicitar la recuperación desde `/auth/forgot-password` con una cuenta propia y comprobar que el correo llega, que el enlace permite cambiar la contraseña una sola vez y que las sesiones anteriores quedan cerradas.
+4. Si la solicitud devuelve `503`, revisar `docker logs catmatch-backend-perm`: solo indica los nombres de las variables que faltan o el tipo de error SMTP.
+
+**Probar la recuperación sin correo (solo desarrollo).** Con `PASSWORD_RESET_DEV_OUTBOX=true` y `env` igual a `dev` (valor por defecto) o `test`, el backend no exige SMTP ni envía correos: el enlace se guarda en memoria del proceso y la página `/auth/forgot-password` muestra un aviso «Modo desarrollo» con el botón **Abrir enlace de recuperación**. Se mantienen la caducidad de 30 minutos, el uso único, la validación de contraseñas y la invalidación de sesiones. El enlace se obtiene mediante `POST /api/auth/password-reset/dev-outbox` (`{"email": ...}`), oculto en OpenAPI y con respuesta `404` si el modo no está activo. Con `env=prod` o cualquier otro valor, el modo queda bloqueado aunque la variable sea `true`, y el backend lo registra al arrancar. Advertencias: cualquiera que acceda al backend puede obtener el enlace de cualquier cuenta y saber si existe, así que no lo actives en un entorno compartido o público; los enlaces se pierden al recargar el backend y no funcionan con varios workers. Como el resto de variables, en este Codespace debe añadirse al servicio del backend y recrear el contenedor (con autorización). Es exclusivamente para desarrollo: debe permanecer en `false` (o sin definir) en producción y no debe quedar activada en `compose.codespaces.yml` ni en ningún commit; tras probarla, quitar la variable y recrear de nuevo solo el backend.
 
 ### 10.3. Instrucciones de arranque
 
@@ -203,6 +227,25 @@ cd /workspaces/CatMatch
 DATABASE_URL="sqlite:///:memory:" pytest backend/tests/ -v
 ```
 
+En este Codespace `pytest` no está instalado en el Python del sistema, así que las pruebas se ejecutan con `unittest` desde la raíz del repositorio:
+
+```bash
+cd /workspaces/CatMatch
+# Autenticación, «Recordarme» y recuperación de contraseña (incluido el modo de desarrollo sin correo)
+DATABASE_URL="sqlite:///:memory:" env=test python3 -m unittest \
+  backend.tests.test_auth_api backend.tests.test_password_reset backend.tests.test_password_reset_dev_outbox
+# Suite completa: test_assistant_api y test_rag importan pytest y fallan al cargarse sin él (problema del entorno)
+DATABASE_URL="sqlite:///:memory:" env=test python3 -m unittest $(ls backend/tests/test_*.py | sed 's#/#.#g; s#\.py$##')
+```
+
+Comprobación de tipos del frontend:
+
+```bash
+cd /workspaces/CatMatch/frontend-next && npx --no-install tsc --noEmit -p .
+```
+
+Las pruebas de recuperación de contraseña usan SQLite en memoria y un servidor SMTP simulado: no envían correos reales.
+
 11. Catálogo de Endpoints de la API
 
 FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/docs` y `http://localhost:8001/redoc`.
@@ -223,6 +266,8 @@ FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/d
 | `POST` | `/api/auth/register` | Registrar nueva cuenta de usuario (rol estándar 'user') | 201 Created / 409 / 422 |
 | `POST` | `/api/auth/login` | Iniciar sesión y emitir token Bearer JWT / cookie HttpOnly | 200 OK / 401 |
 | `POST` | `/api/auth/logout` | Cerrar sesión y limpiar cookie de acceso | 200 OK |
+| `POST` | `/api/auth/password-reset/request` | Solicitar enlace de recuperación por correo (respuesta genérica) | 202 Accepted / 422 / 503 (correo no configurado) |
+| `POST` | `/api/auth/password-reset/confirm` | Establecer contraseña nueva con el token del enlace e invalidar sesiones anteriores | 200 OK / 400 / 422 |
 | `GET` | `/api/auth/me` | Obtener identidad y rol del usuario autenticado | 200 OK / 401 |
 | `POST` | `/api/assistant/chat` | Conversación con el asistente RAG sobre catálogo y adopción | 200 OK / 422 |
 

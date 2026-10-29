@@ -142,7 +142,7 @@ export async function registerUser(payload: { email: string; password: string })
   return handleResponse<UserRead>(resp);
 }
 
-export async function loginUser(payload: { email: string; password: string }): Promise<TokenResponse> {
+export async function loginUser(payload: { email: string; password: string; remember_me?: boolean }): Promise<TokenResponse> {
   const url = buildUrl('/api/auth/login');
   const resp = await fetch(url, {
     method: 'POST',
@@ -158,6 +158,46 @@ export async function logoutUser(): Promise<{ message: string }> {
     method: 'POST',
   });
   return handleResponse<{ message: string }>(resp);
+}
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const url = buildUrl('/api/auth/password-reset/request');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return handleResponse<{ message: string }>(resp);
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<{ message: string }> {
+  const url = buildUrl('/api/auth/password-reset/confirm');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  return handleResponse<{ message: string }>(resp);
+}
+
+export type DevResetOutboxItem = { reset_path: string; created_at: string; expires_at: string };
+
+/**
+ * SOLO DESARROLLO: enlaces de recuperación pendientes del buzón en memoria del backend.
+ * Devuelve null si el buzón no está activado (el backend responde 404).
+ */
+export async function fetchDevResetOutbox(email: string): Promise<DevResetOutboxItem[] | null> {
+  if (process.env.NODE_ENV === 'production') return null;
+  const url = buildUrl('/api/auth/password-reset/dev-outbox');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+    cache: 'no-store',
+  });
+  if (resp.status === 404) return null;
+  const data = await handleResponse<{ items: DevResetOutboxItem[] }>(resp);
+  return data.items;
 }
 
 export async function getMe(): Promise<UserRead | null> {

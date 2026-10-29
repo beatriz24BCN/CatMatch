@@ -17,6 +17,20 @@ if _using_pydantic_v2:
         env: str = "dev"
         JWT_SECRET_KEY: str = ""
         JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+        REMEMBER_ME_EXPIRE_DAYS: int = 30
+        PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+        PASSWORD_RESET_MIN_INTERVAL_SECONDS: int = 60
+        # Solo desarrollo: guarda los enlaces de recuperación en un buzón en memoria en vez de enviarlos.
+        # Se ignora salvo que env sea "dev" o "test".
+        PASSWORD_RESET_DEV_OUTBOX: bool = False
+        FRONTEND_BASE_URL: str = ""
+        SMTP_HOST: str = ""
+        SMTP_PORT: int = 587
+        SMTP_USERNAME: str = ""
+        SMTP_PASSWORD: str = ""
+        SMTP_FROM: str = ""
+        SMTP_SECURITY: str = "starttls"
+        SMTP_TIMEOUT_SECONDS: int = 10
 
         # pydantic v2 style configuration
         model_config = {
@@ -29,6 +43,20 @@ else:
         env: str = "dev"
         JWT_SECRET_KEY: str = ""
         JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+        REMEMBER_ME_EXPIRE_DAYS: int = 30
+        PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+        PASSWORD_RESET_MIN_INTERVAL_SECONDS: int = 60
+        # Solo desarrollo: guarda los enlaces de recuperación en un buzón en memoria en vez de enviarlos.
+        # Se ignora salvo que env sea "dev" o "test".
+        PASSWORD_RESET_DEV_OUTBOX: bool = False
+        FRONTEND_BASE_URL: str = ""
+        SMTP_HOST: str = ""
+        SMTP_PORT: int = 587
+        SMTP_USERNAME: str = ""
+        SMTP_PASSWORD: str = ""
+        SMTP_FROM: str = ""
+        SMTP_SECURITY: str = "starttls"
+        SMTP_TIMEOUT_SECONDS: int = 10
 
         class Config:
             env_file = ".env"

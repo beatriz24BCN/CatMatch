@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from ..db.session import SessionLocal
-from ..core.security import decode_access_token
+from ..core.security import decode_access_token, TOKEN_VERSION_CLAIM, user_token_version
 from ..crud.users import get_user_by_id
 from ..models.user import User
 
@@ -75,6 +75,14 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cuenta de usuario inactiva.",
+        )
+    # Los tokens anteriores a token_version no llevan la claim: se tratan como versión 0.
+    token_ver = payload.get(TOKEN_VERSION_CLAIM, 0)
+    if type(token_ver) is not int or token_ver != user_token_version(user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o expirado.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 

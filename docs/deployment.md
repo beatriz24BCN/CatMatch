@@ -28,6 +28,14 @@ En un despliegue de producción típico existen dos escenarios de arquitectura:
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Tiempo de expiración del token de sesión (minutos) | Opcional | `60` (por defecto) |
 | `ALLOWED_ORIGINS` | Lista de dominios frontend permitidos separados por comas para CORS | Opcional (si Escenario B) | `https://catmatch.vercel.app,https://midominio.com` |
 | `env` | Entorno de ejecución (`prod`) | Opcional | `prod` |
+| `REMEMBER_ME_EXPIRE_DAYS` | Duración de la sesión con «Recordarme» (días) | Opcional | `30` (por defecto) |
+| `FRONTEND_BASE_URL` | URL pública HTTPS del frontend para los enlaces de recuperación | **Sí** (recuperación de contraseña) | `https://midominio.com` |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURITY` | Servidor SMTP del proveedor de correo (`starttls` o `ssl`) | **Sí** (recuperación de contraseña) | `smtp.proveedor.example` / `587` / `starttls` |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM` | Credenciales y remitente verificado (como secretos del servicio) | **Sí** (recuperación de contraseña) | — |
+| `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` / `PASSWORD_RESET_MIN_INTERVAL_SECONDS` | Caducidad del enlace y espera mínima entre solicitudes por cuenta | Opcional | `30` / `60` |
+| `PASSWORD_RESET_DEV_OUTBOX` | Buzón de recuperación **solo para desarrollo**. Debe ser `false` o no definirse; con `env=prod` se ignora aunque valga `true` | **No usar** | `false` |
+
+Sin `SMTP_HOST`, `SMTP_FROM` y `FRONTEND_BASE_URL`, la solicitud de recuperación responde `503` y no envía correos. Antes de arrancar la versión con recuperación de contraseña debe aplicarse la migración `0004_password_reset` (`alembic upgrade head`), que añade `users.token_version` y la tabla `password_reset_tokens`.
 
 *Seguridad:* Nunca incluir contraseñas reales ni claves en `.env.example` ni en el control de versiones Git.
 

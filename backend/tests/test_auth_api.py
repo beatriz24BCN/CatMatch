@@ -148,6 +148,78 @@ class AuthApiTestCase(unittest.TestCase):
         })
         self.assertEqual(resp.status_code, 401)
 
+    # 7b. «Recordarme»: cookie de sesión vs. cookie persistente
+    def _login_with(self, extra):
+        pw = "Password123"
+        user_obj = type('U', (), {
+            'id': uuid.uuid4(),
+            'email': 'remember@example.com',
+            'hashed_password': get_password_hash(pw),
+            'role': 'user',
+            'is_active': True
+        })()
+        users_crud.get_user_by_email = lambda db, email: user_obj
+        body = {"email": "remember@example.com", "password": pw}
+        body.update(extra)
+        return client.post("/api/auth/login", json=body)
+
+    @staticmethod
+    def _token_cookie_header(resp):
+        headers = [h for h in resp.headers.get_list("set-cookie") if h.startswith("catmatch_token=")]
+        assert len(headers) == 1, headers
+        return headers[0]
+
+    @staticmethod
+    def _cookie_value(header):
+        return header.split(";", 1)[0].split("=", 1)[1].strip('"')
+
+    @staticmethod
+    def _remaining_seconds(token):
+        payload = decode_access_token(token)
+        assert payload is not None
+        return payload["exp"] - int(datetime.now(timezone.utc).timestamp())
+
+    def test_login_without_remember_me_sets_session_cookie(self):
+        for extra in ({}, {"remember_me": False}):
+            resp = self._login_with(extra)
+            self.assertEqual(resp.status_code, 200)
+            header = self._token_cookie_header(resp)
+            lower = header.lower()
+            self.assertNotIn("max-age", lower)
+            self.assertNotIn("expires", lower)
+            self.assertIn("httponly", lower)
+            self.assertIn("samesite=lax", lower)
+            # Token de 60 minutos, tanto en la cookie como en el JSON
+            cookie_token = self._cookie_value(header)
+            self.assertEqual(cookie_token, resp.json()["access_token"])
+            self.assertLessEqual(self._remaining_seconds(cookie_token), 60 * 60)
+            self.assertGreater(self._remaining_seconds(cookie_token), 59 * 60)
+
+    def test_login_with_remember_me_sets_persistent_cookie(self):
+        resp = self._login_with({"remember_me": True})
+        self.assertEqual(resp.status_code, 200)
+        header = self._token_cookie_header(resp)
+        lower = header.lower()
+        self.assertIn("max-age=2592000", lower)
+        self.assertIn("httponly", lower)
+        self.assertIn("samesite=lax", lower)
+
+        cookie_token = self._cookie_value(header)
+        thirty_days = 30 * 24 * 60 * 60
+        self.assertLessEqual(self._remaining_seconds(cookie_token), thirty_days)
+        self.assertGreater(self._remaining_seconds(cookie_token), thirty_days - 120)
+
+        # El JSON solo contiene el token de 60 minutos, nunca el de 30 días
+        data = resp.json()
+        self.assertNotEqual(data["access_token"], cookie_token)
+        self.assertNotIn(cookie_token, resp.text)
+        self.assertLessEqual(self._remaining_seconds(data["access_token"]), 60 * 60)
+
+    def test_login_remember_me_rejects_non_boolean(self):
+        for value in ("si", "true", 1, None):
+            resp = self._login_with({"remember_me": value})
+            self.assertEqual(resp.status_code, 422, value)
+
     # 8. /api/auth/me sin autenticación (401)
     def test_get_me_unauthorized(self):
         resp = client.get("/api/auth/me")

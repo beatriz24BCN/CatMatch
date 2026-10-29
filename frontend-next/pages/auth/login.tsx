@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await loginUser({ email, password });
+      await loginUser({ email, password, remember_me: rememberMe });
       // Redirigir a la URL previa o a la portada
       const next = (router.query.next as string) || '/';
       router.push(next);
@@ -76,6 +77,22 @@ export default function LoginPage() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+          </div>
+
+          <div className="login-options">
+            <label className="checkbox-inline" htmlFor="loginRemember">
+              <input
+                id="loginRemember"
+                name="remember"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+              />
+              <span>Recordarme</span>
+            </label>
+            <Link href="/auth/forgot-password" className="login-forgot">
+              ¿Has olvidado tu contraseña?
+            </Link>
           </div>
 
           <div className="btn-row" style={{ marginTop: 24 }}>

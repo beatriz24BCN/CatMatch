@@ -42,7 +42,7 @@ export default function Home() {
               de cada gato, para que la adopción funcione bien para ambos.
             </p>
             <div className="btn-row">
-              <Link href="/adopt/results" className="btn btn-primary">Encontrar mi match</Link>
+              <Link href="/adopt" className="btn btn-primary">Encuentra a tu felino</Link>
               <Link href="/#como-funciona" className="btn btn-secondary">Cómo funciona</Link>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function Home() {
         <div className="container">
           <div className="cta-band">
             <h2 id="cta-title">Cada gato merece un hogar que encaje con él</h2>
-            <Link href="/adopt/results" className="btn btn-primary">Encontrar mi match</Link>
+            <Link href="/adopt" className="btn btn-primary">Encuentra a tu felino</Link>
           </div>
         </div>
       </section>

@@ -18,10 +18,10 @@ Resumen: la landing presenta a CatMatch, facilita el acceso al matching y destac
 - Header sticky opcional en scroll
 
 ### Hero
-- Mensaje principal: titular claro y emocional (ej. "Encuentra al compañero felino perfecto")
+- Mensaje principal: titular claro y emocional (ej. "Encuentra al compañero felino perfecto" / "Encuentra un gato compatible contigo")
 - Texto descriptivo: una frase que explique brevemente el servicio y su valor
-- CTA principal: botón prominente "Encuentra tu match" (color verde, alto contraste)
-- CTA secundario: "Ver gatos disponibles" (estilo secundario, contorno o fondo crema)
+- CTA principal: botón prominente "Encuentra a tu felino" (color verde, enlace directo al catálogo `/adopt`)
+- CTA secundario: "Cómo funciona" (estilo secundario, enlace de ancla `/#como-funciona`)
 - Imagen principal de gato: fotografía grande y prominente a la derecha o en background con máscara suave
 - Tarjeta/elemento visual de CatMatch AI: pequeño panel dentro del hero que muestra un ejemplo de "Compatibilidad" o un micro-visual (por ejemplo, un indicador de MatchScore y un avatar del adoptante)
 - Indicador visual de compatibilidad: pequeño medidor o badge sobre la tarjeta de AI que muestre un porcentaje o icono de afinidad
@@ -63,35 +63,27 @@ Cada card debe contemplar:
   - Pequeño ejemplo con 1-2 razones legibles por qué un gato es compatible
 
 ### CTA final
-- Sección de cierre con llamada clara: "Comienza a buscar tu compañero" y botón "Crear mi perfil" o "Encuentra tu match"
+- Sección de cierre con llamada clara: "Cada gato merece un hogar que encaje con él" y botón prominente "Encuentra a tu felino" (enlace a `/adopt`)
 
 ## 3. Cat Listing / Gatos en adopción
 
 Vista que prioriza exploración y filtrado.
 
-- Header (consistente con la landing)
-- Título de la página: "Gatos en adopción"
-- Filtros (barra lateral en desktop / panel colapsable en mobile):
-  - Edad / Rango
-  - Sexo
-  - Tamaño
-  - Nivel de energía
-  - Compatibilidad con niños/otros animales
-  - Ubicación / Radio
-  - Disponible para adopción inmediata
-  - Ordenar por: Relevancia, Más recientes, Más compatibles
+- Header (consistente con la landing):
+  - Título de la página: "Gatos en adopción"
+  - Texto introductorio explicativo (sin botón redundante de recomendaciones, consolidando el acceso a la afinidad a través de Matcher)
+- Filtros (barra en grid responsiva):
+  - Ubicación (búsqueda por texto)
+  - Edad (etapas: cachorro, joven, adulto, senior)
+  - Nivel de actividad (bajo, medio, alto, muy alto)
+  - Acción: "Limpiar filtros"
 - Listado / Grid de gatos:
-  - Layout en columnas responsivas (3-4 en desktop, 2 en tablet, 1 en móvil)
-  - Paginación o scroll infinito (decidir según volumen)
-- Card de gato (consistente con "Gatos destacados"):
-  - Imagen destacada grande
-  - Nombre, edad, ubicación
-  - Etiquetas de características
-  - MatchScore visible (mini componente)
-  - Icono de favorito
-  - Acción primaria: "Ver perfil"
-
-Compatibilidad: cada card muestra un indicador visual de compatibilidad calculado en relación al perfil del usuario cuando esté logueado (si no, mostrar opción para crear perfil).
+  - Layout en columnas responsivas (3 en desktop, 2 en tablet, 1 en móvil)
+  - Cards de gato (`CatTile`) con foto, nombre, edad, ubicación, descripción y botón "Ver ficha"
+- Estado vacío resiliente (cuando los filtros no arrojan resultados):
+  - Icono y mensaje: "No se encontraron gatos con estos filtros"
+  - Texto explicativo y botón de acción rápida: "Ver todos los gatos" (restablece los filtros)
+  - Sección de sugerencias felinas directas: bajo el botón, se muestra el título "Quizás alguno te robe el corazón ❤️" y hasta dos tarjetas de gatos reales obtenidas del catálogo general (`GET /api/cats/?limit=2`) para mantener la experiencia de exploración continua sin salir de la vista
 
 ## 4. Cat Profile / Perfil del gato
 
@@ -182,6 +174,7 @@ Cada componente debe recibir datos y handlers mínimos para mantener separación
   - Bordes redondeados (8–16px), sombra sutil para elevar tarjetas sobre fondo
   - Uso de imágenes grandes en la parte superior de la tarjeta
   - Espaciado generoso y tipografía legible
+  - Panel de compatibilidad (`match-panel` en fichas de resultados): contenedor exterior cálido con fondo melocotón suave (`#FFF1E5`) y borde naranja claro (`#EBCBAF`), enmarcando tarjetas interiores de factores en blanco (`#FFFFFF`) y etiquetas semafóricas (verde, gris neutro y rojo)
 - Jerarquía visual:
   - Titulares grandes y CTAs prominentes en hero
   - MatchScore y CTAs de adopción con alto contraste y posición fija en la vista de perfil

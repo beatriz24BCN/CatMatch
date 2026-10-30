@@ -1,5 +1,4 @@
 import Layout from '../../components/Layout';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CatTile from '../../components/CatTile';
 import { CatSilhouette } from '../../components/icons';
@@ -10,6 +9,7 @@ import type { Cat } from '../../types/api';
 export default function AdoptIndex(){
   const [hasProfile, setHasProfile] = useState(false);
   const [cats, setCats] = useState<Cat[] | null>(null);
+  const [suggestedCats, setSuggestedCats] = useState<Cat[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,42 +22,60 @@ export default function AdoptIndex(){
     try{ setHasProfile(!!localStorage.getItem('catmatch_person_id')); }catch(e){ /* storage unavailable */ }
   },[]);
 
-  async function fetchCats(){
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listCats({
-        location: location.trim() || undefined,
-        age_stage: ageStage || undefined,
-        activity_level: activityLevel || undefined,
-      });
-      setCats(Array.isArray(data) ? data : []);
-    } catch(err: any) {
-      setError(formatApiError(err, 'No se ha podido cargar el catálogo de gatos.'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    fetchCats();
+    let cancelled = false;
+
+    async function loadCats() {
+      setLoading(true);
+      setError(null);
+      setSuggestedCats(null);
+
+      try {
+        const data = await listCats({
+          location: location.trim() || undefined,
+          age_stage: ageStage || undefined,
+          activity_level: activityLevel || undefined,
+        });
+
+        if (cancelled) return;
+        const catsList = Array.isArray(data) ? data : [];
+        setCats(catsList);
+
+        if (catsList.length === 0) {
+          try {
+            const fallbackData = await listCats({ limit: 2 });
+            if (cancelled) return;
+            setSuggestedCats(Array.isArray(fallbackData) ? fallbackData.slice(0, 2) : []);
+          } catch (fallbackErr: any) {
+            if (cancelled) return;
+            setError(formatApiError(fallbackErr, 'No se ha podido cargar los gatos sugeridos.'));
+          }
+        }
+      } catch(err: any) {
+        if (cancelled) return;
+        setError(formatApiError(err, 'No se ha podido cargar el catálogo de gatos.'));
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCats();
+
+    return () => {
+      cancelled = true;
+    };
   }, [location, ageStage, activityLevel]);
 
   return (
     <Layout title="Gatos en adopción" description="Explora los gatos disponibles para adopción en CatMatch">
       <div className="container page">
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-          <div>
-            <h1>Gatos en adopción</h1>
-            <p className="lead" style={{ margin: 0 }}>
-              Explora todos los gatos del refugio o crea tu perfil para obtener recomendaciones personalizadas de compatibilidad.
-            </p>
-          </div>
-          <div className="btn-row">
-            <Link href="/adopt/results" className="btn btn-primary">
-              Recomendaciones de compatibilidad
-            </Link>
-          </div>
+        <div style={{ marginBottom: 20 }}>
+          <h1>Gatos en adopción</h1>
+          <p className="lead" style={{ margin: 0 }}>
+            Explora todos los gatos del refugio o crea tu perfil para obtener recomendaciones personalizadas de compatibilidad.
+          </p>
         </div>
 
         {/* Barra de filtros */}
@@ -133,6 +151,27 @@ export default function AdoptIndex(){
             >
               Ver todos los gatos
             </button>
+
+            {suggestedCats && suggestedCats.length > 0 && (
+              <div style={{ marginTop: 32, borderTop: '1px solid var(--border)', paddingTop: 24 }}>
+                <p style={{ fontWeight: 600, color: 'var(--green-900)', fontSize: '1.05rem', marginBottom: 20 }}>
+                  Quizás alguno te robe el corazón ❤️
+                </p>
+                <div
+                  className="grid-cats"
+                  style={{
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                    maxWidth: 640,
+                    margin: '0 auto',
+                    textAlign: 'left',
+                  }}
+                >
+                  {suggestedCats.map(c => (
+                    <CatTile key={c.id} cat={c} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

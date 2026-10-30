@@ -243,8 +243,8 @@ img { max-width: 100%; display: block; }
 }
 
 .match-panel {
-  background: #faf7f0;
-  border: 1px solid #ebdccb;
+  background: #FFF1E5;
+  border: 1px solid #EBCBAF;
   border-radius: var(--radius-sm);
   padding: 16px;
   font-size: 0.92rem;

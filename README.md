@@ -143,17 +143,18 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 - **Frontend Next.js:**
   - Desarrollado en Next.js 16.4.3 (Pages Router) y TypeScript en `frontend-next/`.
   - Conexión al backend mediante proxy local en `next.config.js` (`/api/*` reescrito a `http://localhost:8001/api/*`), evitando problemas de CORS en navegador.
-  - Vistas funcionales: portada (`/`), catálogo de adopción con filtros (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`), recuperación de contraseña (`/auth/forgot-password` y `/auth/reset-password`) y panel administrativo (`/admin/adoption-requests`).
+  - Vistas funcionales: portada (`/` con CTAs principales «Encuentra a tu felino» dirigiendo directamente al catálogo `/adopt` y botón secundario «Cómo funciona» con ancla `/#como-funciona`), catálogo de adopción con filtros dinámicos y sugerencias felinas en estados sin coincidencias (`/adopt`), creación y edición de perfil (`/adopt/profile`), resultados de matching (`/adopt/results`), ficha detallada de gato (`/adopt/cat/[id]`), formulario de solicitud de adopción (`/adopt/cat/[id]/request`), inicio de sesión (`/auth/login`), registro (`/auth/register`), recuperación de contraseña (`/auth/forgot-password` y `/auth/reset-password`) y panel administrativo (`/admin/adoption-requests`).
   - **Matcher** (`frontend-next/components/ChatAssistant.tsx`): Asistente de compatibilidad accesible desde el Navbar como entrada principal al matching, con extracción de preferencias conversacionales y acceso directo a `/adopt/results`.
 - **Matcher y Matching Orientado a la Adopción:**
-  - *Navegación simplificada:* Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a **Matcher** como guía conversacional principal.
+  - *Navegación simplificada:* Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a **Matcher** como guía conversacional principal, y se eliminó el botón verde «Recomendaciones de compatibilidad» de la cabecera del catálogo (`/adopt`) para evitar dispersión, manteniendo intactos el título, la descripción y los filtros.
+  - *Catálogo con estado vacío resiliente:* Cuando los filtros no devuelven resultados en `/adopt`, se mantiene el aviso original y el botón «Ver todos los gatos», integrando debajo sugerencias directas con hasta dos gatos reales (`GET /api/cats/?limit=2`) bajo el mensaje «Quizás alguno te robe el corazón ❤️» para ofrecer alternativas reales sin tarjetas ficticias.
   - *Matching sin registro obligatorio:* Los visitantes pueden dialogar con Matcher y obtener recomendaciones completas en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de registrarse.
   - *Semáforo visual de 3 estados:* Factores coloreados como verde (compatible), gris neutro (informativo) y rojo (incompatibilidad).
   - *Corrección de convivencia (caso Oreo):* Regla simétrica para gatos con necesidades de hogar exclusivo (un hogar sin niños ni mascotas satisface las necesidades de gatos no tolerantes con niños/mascotas).
 - **Estado de seguridad y calidad visual:**
   - *Actualización de seguridad Next.js:* Actualizado a Next.js 16.4.3 en `package.json` y `package-lock.json`; `npm audit --omit=dev` reporta 0 vulnerabilidades.
   - *Identidad gráfica y navegación:* Portada limpia sin peticiones 404 a `hero-cat.jpg`, favicon `.ico` y `.svg` de marca configurados; ficha de gato con encuadre de imagen protegido (aspect ratio 4:3) y presentación de salud y cuidados.
-  - *Diseño de resultados del MVP:* Tarjetas de gatos en `/adopt/results` con composición equilibrada en tres columnas (fotografía destacada de 380px, bloque de información centrado y panel de compatibilidad con detalles desplegables).
+  - *Diseño de resultados del MVP:* Tarjetas de gatos en `/adopt/results` con composición equilibrada en tres columnas (fotografía destacada de 380px, bloque de información centrado y panel de compatibilidad exterior en tono melocotón suave `#FFF1E5` con borde `#EBCBAF`, enmarcando factores interiores en blanco con detalles desplegables).
 
 10. Entorno de desarrollo, configuración y ejecución
 

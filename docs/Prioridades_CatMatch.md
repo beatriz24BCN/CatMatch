@@ -171,15 +171,18 @@ Al cierre de la Semana 3, las prioridades originales del MVP han sido implementa
 
 ## 17. Unificación de navegación y matching orientado a la adopción
 
-En la evolución de CatMatch se ha consolidado el flujo orientado a la adopción responsable:
+En la evolución de CatMatch se ha consolidado el flujo orientado a la adopción responsable (actualizaciones del 30 de octubre de 2026):
 
-1. **Unificación de entrada (Matcher):** Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a Matcher (`🐱 Matcher`) como el punto de acceso principal a la compatibilidad.
-2. **Matching sin registro:** Los visitantes pueden obtener recomendaciones completas directamente desde Matcher o en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de crear cuenta previa.
-3. **Semáforo cualitativo de 3 estados:**
+1. **Unificación de entrada (Matcher):** Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a Matcher (`🐱 Matcher`) como el punto de acceso principal a la compatibilidad. Asimismo, se retiró el botón verde «Recomendaciones de compatibilidad» de la cabecera de `/adopt` para evitar redundancias, manteniendo intactos el título, la descripción y los filtros del catálogo.
+2. **Acceso directo al catálogo desde portada:** Los dos botones principales de la página de inicio (hero y banda inferior de cierre) se denominan «Encuentra a tu felino» y dirigen directamente a `/adopt` para facilitar la exploración inmediata de los gatos disponibles, mientras que el botón secundario «Cómo funciona» conserva su destino original hacia la sección explicativa (`/#como-funciona`).
+3. **Estado vacío resiliente con sugerencias felinas en `/adopt`:** Cuando los filtros no devuelven resultados, se preserva el estado vacío estándar (icono, aviso «No se encontraron gatos con estos filtros» y botón «Ver todos los gatos») y se realiza una consulta secundaria a la API (`GET /api/cats/?limit=2`) para mostrar bajo el botón hasta dos gatos reales del catálogo mediante el componente `CatTile`, acompañados del mensaje «Quizás alguno te robe el corazón ❤️». Si el catálogo está completamente vacío no se presentan tarjetas ficticias, y si la consulta adicional falla se reporta como un error en lugar de un catálogo vacío.
+4. **Matching sin registro:** Los visitantes pueden obtener recomendaciones completas directamente desde Matcher o en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de crear cuenta previa.
+5. **Semáforo cualitativo de 3 estados:**
    - 🟢 Verde (`badge-ok`): Compatible (`match: true`).
    - ⚪ Gris neutro (`badge-info`): Factor informativo (`match: null`).
    - 🔴 Rojo (`badge-danger`): Incompatibilidad confirmada (`match: false`).
-4. **Convivencia simétrica (caso Oreo):** Se corrigió la regla de evaluación en `backend/app/services/matching.py` para que un hogar sin niños ni mascotas sea evaluado como compatible con las necesidades de un gato no apto con niños/mascotas, conservando la estricta protección de incompatibilidad cuando sí los hay.
+6. **Convivencia simétrica (caso Oreo):** Se corrigió la regla de evaluación en `backend/app/services/matching.py` para que un hogar sin niños ni mascotas sea evaluado como compatible con las necesidades de un gato no apto con niños/mascotas, conservando la estricta protección de incompatibilidad cuando sí los hay.
+7. **Estilo visual del panel de compatibilidad:** El recuadro exterior que envuelve toda la sección de compatibilidad en las fichas de resultados (`.match-panel` en `/adopt/results`) adopta un fondo melocotón suave (`#FFF1E5`) con borde naranja claro (`#EBCBAF`), manteniendo intactos los factores interiores (`.factor` con fondo blanco), etiquetas de afinidad, botones y lógica del motor.
 
 ## 18. Notas finales
 

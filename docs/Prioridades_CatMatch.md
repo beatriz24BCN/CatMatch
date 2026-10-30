@@ -1,0 +1,193 @@
+**Título: CatMatch — Planteamiento funcional y flujo de la aplicación**
+
+Después de ir definiendo la idea de CatMatch, he concretado mejor cuál quiero que sea la funcionalidad principal de la aplicación, qué información necesito recoger y cómo quiero que sea el recorrido de una persona desde que entra en la web hasta que inicia una solicitud de adopción.
+
+La idea principal de CatMatch es intentar encontrar gatos que puedan encajar con la persona que quiere adoptar, teniendo en cuenta su forma de vida, su carácter y el entorno en el que vive.
+
+El objetivo no es simplemente mostrar gatos, sino intentar encontrar una combinación que pueda funcionar bien para ambas partes.
+
+## 1. Página de inicio
+
+Quiero que la página de inicio sea una única vista dividida en diferentes secciones.
+
+Tendrá un navbar desde el que se podrá acceder a las diferentes partes de la página:
+
+- Inicio.
+- Adopta.
+- Sobre nosotros.
+- Contacto.
+
+Al pulsar sobre las opciones del navbar, el usuario se desplazará a la sección correspondiente.
+
+La idea principal de la página será:
+
+**«Encontramos el equilibrio entre el gato y la persona»**
+
+El objetivo de la portada es explicar brevemente la misión, mostrar un acceso rápido para empezar a buscar y presentar un ejemplo ilustrativo del flujo de adopción.
+
+## 2. Flujo de adopción (visión general)
+
+1. Persona llega a la web y explora la sección Adopta.
+2. Puede navegar por perfiles de gatos filtrados por ubicación, edad o características principales.
+3. Para iniciar una solicitud de adopción, la persona completa un pequeño formulario de perfil (perfil público, no requiere cuenta en la primera fase).
+4. A partir del perfil y las preferencias del adoptante, el sistema sugiere gatos compatibles.
+5. La persona revisa el perfil del gato y puede iniciar una solicitud de adopción rellenando un mensaje y datos de contacto.
+6. Las solicitudes se gestionan en el sistema con estados: Enviada → En revisión → Aceptada / No aceptada. “En proceso de adopción” no equivale a aceptación definitiva.
+
+## 3. Objetivos funcionales del MVP
+
+- Permitir perfiles de personas sin exigir gestión de cuentas en la primera fase.
+- Perfiles de gatos con atributos suficientes para evaluar compatibilidad.
+- Formularios de solicitud de adopción con mensaje libre y datos de contacto.
+- Capacidad de calcular coincidencias bajo demanda (no persistir tablas de Match en esta fase).
+- Documentación y trazabilidad de las decisiones de diseño.
+
+## 4. Entidades principales y campos clave
+
+1. Person (perfil de adoptante)
+   - id (UUID)
+   - full_name (VARCHAR)
+   - bio (TEXT/VARCHAR libre para la biografía)
+   - location (VARCHAR)
+   - household_type (VARCHAR pequeño)
+   - has_children (BOOLEAN)
+   - has_other_pets (BOOLEAN)
+   - other_pets_details (JSONB) — estructura libre para describir especies, edad, sexo, estado de salud, temperamento
+   - activity_level (VARCHAR(10)) — vocabulario controlado recomendado
+   - home_type (VARCHAR(20))
+   - home_size (VARCHAR(10))
+   - has_outdoor_space (BOOLEAN)
+   - work_hours_per_day (SMALLINT)
+   - personality_traits (JSONB) — set de rasgos clave
+   - preferred_cat_traits (JSONB)
+   - time_outside (VARCHAR(100)) — libre, descripción cualitativa del tiempo fuera de casa
+   - time_available (VARCHAR(100)) — libre, tiempo disponible para dedicar al gato
+   - created_at, updated_at (timestamps)
+
+2. Cat (perfil de gato)
+   - id (UUID)
+   - name (VARCHAR)
+   - age_stage (VARCHAR/ENUM: kitten, young, adult, senior)
+   - age_months (SMALLINT)
+   - sex (VARCHAR)
+   - breed (VARCHAR)
+   - size (VARCHAR)
+   - activity_level (VARCHAR(10))
+   - personality_traits (JSONB)
+   - good_with_children (BOOLEAN)
+   - good_with_dogs (BOOLEAN)
+   - vaccinated (BOOLEAN)
+   - neutered (BOOLEAN)
+   - health_status (TEXT)
+   - description (TEXT)
+   - image_urls (JSONB)
+   - location (VARCHAR)
+   - created_at, updated_at
+
+3. AdoptionRequest
+   - id (UUID)
+   - person_id (FK → persons.id) — nullable para permitir solicitudes anónimas o por terceros
+   - cat_id (FK → cats.id)
+   - contact_email, contact_phone
+   - message (TEXT)
+   - status (VARCHAR(20)) — default 'pending'
+   - created_at, updated_at
+
+## 5. Decisiones de diseño (importantes)
+
+- No persistir un modelo Match en la BD en la primera fase: los resultados se calculan bajo demanda.
+- other_pets_details se mantiene en JSONB para evitar normalizar en una tabla OtherPet en esta fase.
+- Vocabularios controlados (activity_level, age_stage) se mantienen en la documentación y en validaciones de aplicación; la imposición de ENUMs o CHECKs en BD se considera una mejora posterior.
+- Campos de texto libre largos (bio, description, health_status, message) se modelan como TEXT en migraciones cuando proceda, aunque en SQLAlchemy algunos aparecen como String en modelo; se documenta la divergencia técnica.
+
+## 6. Validaciones y vocabularios recomendados (para la capa de aplicación)
+
+- activity_level: ['low','medium','high','very_high'] (mismo vocabulario para Person y Cat)
+- age_stage: ['kitten','young','adult','senior']
+- personality_traits: lista de strings cortos seleccionables desde frontend; el backend almacena JSONB con claves y valores (por ejemplo: {'sociable': 3, 'playful':2})
+
+## 7. Flujos UI/UX principales
+
+- Perfil de persona: formulario de 6-8 pasos (progresivo) para recabar la información mínima necesaria (ubicación, tipo de vivienda, presencia de niños, otros animales, disponibilidad de tiempo).
+- Página de perfil del gato: ficha con imágenes, rasgos y botón "Solicitar adopción".
+- Flujo de solicitud: formulario con mensaje libre y datos de contacto; confirmación visual de envío.
+
+## 8. Privacidad y datos
+
+- No se almacenan contraseñas en la primera fase porque no se exige cuenta.
+- Los datos de contacto se guardan en AdoptionRequest para permitir la gestión manual por parte de protectoras.
+
+## 9. Prioridades para desarrollo
+
+1. Perfilar Person y Cat y permitir búsquedas básicas (location, activity_level, age_stage).
+2. Formularios de solicitud de adopción y almacenamiento seguro de contact data.
+3. Interfaz para revisar solicitudes y cambiar su estado (en revisión, aceptada, no aceptada).
+4. API mínima para obtener matches bajo demanda.
+
+## 10. Casos de uso rechazados por ahora
+
+- No se implementa login/registro en la primera fase.
+- No se persiste Match ni se automatiza la aprobación de solicitudes.
+
+## 11. Requisitos no funcionales
+
+- La base de datos es PostgreSQL.
+- JSONB para estructuras flexibles.
+- Timestamps con zona horaria y server defaults.
+
+## 12. Ejemplos y vocabulario (ejemplos de uso)
+
+- time_outside: 'mostly_out', 'part_time_out', 'works_remote', 'rarely_out'
+- time_available: 'few_minutes_daily', '1-2_hours', 'mostly_home', 'weekend_only'
+
+## 13. Decisiones pendientes (no implementadas)
+
+- Decidir si imponer ENUMs en BD para age_stage y activity_level.
+- Definir la fórmula de compatibilidad y umbrales de colores *(resuelto en el frontend mediante semáforo cualitativo de 3 estados: verde, gris y rojo)*.
+- Definir si en fases posteriores se normaliza other_pets_details en tabla propia.
+
+## 14. Estado de Implementación al Cierre de la Semana 3
+
+Al cierre de la Semana 3, las prioridades originales del MVP han sido implementadas e integradas, complementadas con extensiones de seguridad y asistencia conversacional:
+
+1. **Entidades y Búsquedas (Prioridad 1):** Implementado en FastAPI y Next.js con filtros dinámicos por ubicación, nivel de actividad y etapa de edad en `/adopt`.
+2. **Formulario de Adopción (Prioridad 2):** Implementado con validación y almacenamiento seguro en `adoption_requests` en `/adopt/cat/[id]/request`.
+3. **Gestión de Solicitudes (Prioridad 3):** Implementado en `/admin/adoption-requests` con soporte para actualizar estados (`pending`, `reviewing`, etc.).
+4. **Matches bajo Demanda (Prioridad 4):** Implementado en `POST /api/cats/for_person` y visualizado en `/adopt/results` con desempate objetivo y detección de incompatibilidades.
+5. **Autenticación y Cuentas (Extensión Semana 2/3):** Implementado opcionalmente con JWT (PBKDF2-HMAC-SHA256 y cookies HttpOnly) protegiendo las rutas administrativas y manteniendo el flujo público accesible sin registro.
+6. **Pipeline RAG y Asistente Flotante (Extensión Semana 3):** Implementado como motor de recuperación local Okapi BM25 sobre guías del refugio y catálogo de gatos, con endpoint `POST /api/assistant/chat` y widget interactivo en el frontend.
+
+## 15. Tareas Implementadas en Semana 4 (Cierre Técnico y Calidad)
+
+- **Tipado estricto:** Tipado `Cat[]` formalizado en `pages/index.tsx` eliminando tipos `any[]`.
+- **Validaciones de formulario:** Limpieza de espacios y validaciones en formularios públicos de adopción.
+- **Preparación para producción:** Documentación de arquitectura de despliegue, variables de entorno, CORS para dominios independientes y comandos de inicio en `docs/deployment.md`.
+
+## 16. Tareas Pendientes (Planificadas para Semanas Posteriores 5–6)
+
+- Normalización de `other_pets_details` si se requiere modelo relacional propio.
+- Historial de solicitudes y gestión de favoritos para adoptantes con cuenta registrada.
+- Integración opcional de modelos generativos comerciales (LLM externo) sobre la infraestructura RAG actual.
+
+## 17. Unificación de navegación y matching orientado a la adopción
+
+En la evolución de CatMatch se ha consolidado el flujo orientado a la adopción responsable (actualizaciones del 30 de octubre de 2026):
+
+1. **Unificación de entrada (Matcher):** Se retiró el botón redundante «Crear mi perfil» del Navbar para consolidar a Matcher (`🐱 Matcher`) como el punto de acceso principal a la compatibilidad. Asimismo, se retiró el botón verde «Recomendaciones de compatibilidad» de la cabecera de `/adopt` para evitar redundancias, manteniendo intactos el título, la descripción y los filtros del catálogo.
+2. **Acceso directo al catálogo desde portada:** Los dos botones principales de la página de inicio (hero y banda inferior de cierre) se denominan «Encuentra a tu felino» y dirigen directamente a `/adopt` para facilitar la exploración inmediata de los gatos disponibles, mientras que el botón secundario «Cómo funciona» conserva su destino original hacia la sección explicativa (`/#como-funciona`).
+3. **Estado vacío resiliente con sugerencias felinas en `/adopt`:** Cuando los filtros no devuelven resultados, se preserva el estado vacío estándar (icono, aviso «No se encontraron gatos con estos filtros» y botón «Ver todos los gatos») y se realiza una consulta secundaria a la API (`GET /api/cats/?limit=2`) para mostrar bajo el botón hasta dos gatos reales del catálogo mediante el componente `CatTile`, acompañados del mensaje «Quizás alguno te robe el corazón ❤️». Si el catálogo está completamente vacío no se presentan tarjetas ficticias, y si la consulta adicional falla se reporta como un error en lugar de un catálogo vacío.
+4. **Matching sin registro:** Los visitantes pueden obtener recomendaciones completas directamente desde Matcher o en `/adopt/results` («Encuentra a tu compañero ideal») sin necesidad de crear cuenta previa.
+5. **Semáforo cualitativo de 3 estados:**
+   - 🟢 Verde (`badge-ok`): Compatible (`match: true`).
+   - ⚪ Gris neutro (`badge-info`): Factor informativo (`match: null`).
+   - 🔴 Rojo (`badge-danger`): Incompatibilidad confirmada (`match: false`).
+6. **Convivencia simétrica (caso Oreo):** Se corrigió la regla de evaluación en `backend/app/services/matching.py` para que un hogar sin niños ni mascotas sea evaluado como compatible con las necesidades de un gato no apto con niños/mascotas, conservando la estricta protección de incompatibilidad cuando sí los hay.
+7. **Estilo visual del panel de compatibilidad:** El recuadro exterior que envuelve toda la sección de compatibilidad en las fichas de resultados (`.match-panel` en `/adopt/results`) adopta un fondo melocotón suave (`#FFF1E5`) con borde naranja claro (`#EBCBAF`), manteniendo intactos los factores interiores (`.factor` con fondo blanco), etiquetas de afinidad, botones y lógica del motor.
+
+## 18. Notas finales
+
+Este documento recoge la intención funcional para la primera fase del MVP y sus ampliaciones aprobadas. Debe mantenerse como referencia para las migraciones y para validar que las decisiones técnicas respetan el diseño funcional aprobado.
+
+--
+
+(Documento guardado como versión de referencia para el repositorio.)

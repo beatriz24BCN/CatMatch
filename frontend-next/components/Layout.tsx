@@ -8,6 +8,7 @@ type Props = { title?: string; description?: string; children: ReactNode };
 
 export default function Layout({ title, description, children }: Props) {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isAssistantMinimized, setIsAssistantMinimized] = useState(false);
   const fullTitle = title ? `${title} — CatMatch` : 'CatMatch';
   return (
     <>
@@ -19,13 +20,22 @@ export default function Layout({ title, description, children }: Props) {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </Head>
       <Navbar
-        onToggleAssistant={() => setIsAssistantOpen(prev => !prev)}
-        isAssistantOpen={isAssistantOpen}
+        onToggleAssistant={() => {
+          if (isAssistantMinimized) {
+            setIsAssistantMinimized(false);
+            setIsAssistantOpen(true);
+          } else {
+            setIsAssistantOpen(prev => !prev);
+          }
+        }}
+        isAssistantOpen={isAssistantOpen && !isAssistantMinimized}
       />
       <main>{children}</main>
       <ChatAssistant
         isOpen={isAssistantOpen}
         onClose={() => setIsAssistantOpen(false)}
+        isMinimized={isAssistantMinimized}
+        onMinimize={() => setIsAssistantMinimized(true)}
       />
       <Footer />
     </>

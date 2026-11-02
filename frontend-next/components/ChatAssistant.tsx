@@ -14,6 +14,8 @@ interface Message {
 interface ChatAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  isMinimized?: boolean;
+  onMinimize?: () => void;
 }
 
 const QUICK_PROMPTS = [
@@ -121,7 +123,7 @@ function renderFormattedMessage(text: string) {
   return elements;
 }
 
-export default function ChatAssistant({ isOpen, onClose }: ChatAssistantProps) {
+export default function ChatAssistant({ isOpen, onClose, isMinimized = false, onMinimize }: ChatAssistantProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -140,10 +142,10 @@ export default function ChatAssistant({ isOpen, onClose }: ChatAssistantProps) {
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isMinimized) {
       scrollToBottom();
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isMinimized]);
 
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
@@ -228,7 +230,8 @@ export default function ChatAssistant({ isOpen, onClose }: ChatAssistantProps) {
     router.push('/adopt/results');
   };
 
-  if (!isOpen) return null;
+  // The component stays mounted while minimized, so the conversation state is preserved.
+  if (!isOpen || isMinimized) return null;
 
   return (
     <div
@@ -242,14 +245,27 @@ export default function ChatAssistant({ isOpen, onClose }: ChatAssistantProps) {
           <span style={{ fontSize: '1.1rem' }}>🐱</span>
           <h3 id="assistant-title" className="assistant-title">Matcher — Compatibilidad</h3>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="assistant-close-btn"
-          aria-label="Cerrar Matcher"
-        >
-          ✕
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {onMinimize && (
+            <button
+              type="button"
+              onClick={onMinimize}
+              className="assistant-close-btn"
+              aria-label="Minimizar Matcher"
+              title="Minimizar"
+            >
+              —
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="assistant-close-btn"
+            aria-label="Cerrar Matcher"
+          >
+            ✕
+          </button>
+        </div>
       </header>
 
       <div className="assistant-messages">

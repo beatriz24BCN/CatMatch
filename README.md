@@ -86,6 +86,8 @@ Importante: en la fase inicial se priorizó producir un resultado cualitativo si
 
 Asimismo, la regla de convivencia se aplica de forma simétrica y fidedigna: un hogar sin niños o sin mascotas satisface plenamente las necesidades de un gato que requiere un entorno sin niños o sin mascotas (validado con el caso de Oreo). Se mantiene la recomendación general conservadora (`recommended: None` salvo confirmación de incompatibilidad `recommended: False`), dejando la decisión definitiva al equipo del refugio.
 
+En la vista de resultados (`/adopt/results`), las fichas de recomendación presentan un diseño en dos columnas: a la izquierda, el panel de compatibilidad con los tres criterios esenciales (*Convivencia con niños*, *Otras mascotas* y *Nivel de actividad*) y su desglose de datos siempre visible sin desplegables; a la derecha, la fotografía apaisada 16:9, los datos del gato y los botones de acción centrados.
+
 6. Modelo de datos (primera tanda)
 
 Entidades usadas en el MVP inicial:

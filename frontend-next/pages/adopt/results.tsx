@@ -7,11 +7,16 @@ import { formatApiError } from '../../lib/formatError';
 import CatCard from '../../components/CatCard';
 import { useRouter } from 'next/router';
 
+// Filtro reversible para resultados de Matcher: excluye temporalmente a Simba y Nala
+const EXCLUDED_CATS = ['Simba', 'Nala'];
+
 export default function Results(){
   const router = useRouter();
   const [loading,setLoading] = useState(false);
   const [err,setErr] = useState<string | null>(null);
   const [results,setResults] = useState<any[]>([]);
+
+  const visibleResults = results.filter(r => !EXCLUDED_CATS.includes(r?.cat?.name));
 
   async function loadResults(person_id?: string, draftPreferences?: any){
     setLoading(true); setErr(null);
@@ -63,7 +68,7 @@ export default function Results(){
             </div>
           </div>
         )}
-        {!loading && !err && results.length===0 && (
+        {!loading && !err && visibleResults.length===0 && (
           <div className="empty">
             <CatSilhouette className="empty-icon" />
             <h3>Todavía no hay gatos para mostrar</h3>
@@ -72,7 +77,7 @@ export default function Results(){
           </div>
         )}
         <div style={{display:'grid',gap:16}}>
-          {results.map((r,i)=>(<CatCard key={r?.cat?.id || i} item={r} />))}
+          {visibleResults.map((r,i)=>(<CatCard key={r?.cat?.id || i} item={r} />))}
         </div>
       </div>
     </Layout>

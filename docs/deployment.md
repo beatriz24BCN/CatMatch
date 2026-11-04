@@ -35,7 +35,11 @@ En un despliegue de producción típico existen dos escenarios de arquitectura:
 | `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` / `PASSWORD_RESET_MIN_INTERVAL_SECONDS` | Caducidad del enlace y espera mínima entre solicitudes por cuenta | Opcional | `30` / `60` |
 | `PASSWORD_RESET_DEV_OUTBOX` | Buzón de recuperación **solo para desarrollo**. Debe ser `false` o no definirse; con `env=prod` se ignora aunque valga `true` | **No usar** | `false` |
 
-Sin `SMTP_HOST`, `SMTP_FROM` y `FRONTEND_BASE_URL`, la solicitud de recuperación responde `503` y no envía correos. Antes de arrancar la versión con recuperación de contraseña debe aplicarse la migración `0004_password_reset` (`alembic upgrade head`), que añade `users.token_version` y la tabla `password_reset_tokens`.
+Sin `SMTP_HOST`, `SMTP_FROM` y `FRONTEND_BASE_URL`, la solicitud de recuperación responde `503` y no envía correos.
+
+Antes de arrancar en producción deben aplicarse todas las migraciones de base de datos (`alembic upgrade head`):
+- `0004_password_reset`: añade `users.token_version` y la tabla `password_reset_tokens` para invalidación y recuperación segura.
+- `0005_add_users_name`: añade la columna `users.name VARCHAR(100) NULL` para almacenar el nombre real/preferido del usuario. Las cuentas registradas con anterioridad mantienen `name=NULL` de forma retrocompatible.
 
 *Seguridad:* Nunca incluir contraseñas reales ni claves en `.env.example` ni en el control de versiones Git.
 

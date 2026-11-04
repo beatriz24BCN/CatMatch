@@ -5,6 +5,24 @@ import { CatMark } from './icons';
 import { getMe, logoutUser } from '../lib/api';
 import type { UserRead } from '../types/api';
 
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+      style={{ width: 16, height: 16, flexShrink: 0 }}
+    >
+      <path
+        fillRule="evenodd"
+        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 export default function Navbar({ onToggleAssistant, isAssistantOpen }: { onToggleAssistant?: () => void; isAssistantOpen?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -56,49 +74,63 @@ export default function Navbar({ onToggleAssistant, isAssistantOpen }: { onToggl
           {open ? '✕' : '☰'}
         </button>
         <div id="nav-links" className={`nav-links${open ? ' open' : ''}`}>
-          <Link href="/adopt" onClick={close}>Encontrar gato</Link>
-          <Link href="/#como-funciona" onClick={close}>Cómo funciona</Link>
+          <div className="nav-center">
+            <Link href="/adopt" onClick={close}>Encontrar gato</Link>
+            <Link href="/#como-funciona" onClick={close}>Cómo funciona</Link>
 
-          {user?.role === 'admin' && (
-            <Link href="/admin/adoption-requests" onClick={close} style={{ fontWeight: 600 }}>
-              Panel admin
-            </Link>
-          )}
+            {user?.role === 'admin' && (
+              <Link href="/admin/adoption-requests" onClick={close} style={{ fontWeight: 600 }}>
+                Panel admin
+              </Link>
+            )}
+          </div>
 
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="muted" style={{ fontSize: '0.88rem' }} title={`Conectado como ${user.email}`}>
-                {user.email.split('@')[0]}
-              </span>
+          <div className="nav-actions">
+            {onToggleAssistant && (
               <button
                 type="button"
-                onClick={handleLogout}
-                className="btn btn-ghost btn-sm"
-                style={{ padding: '4px 10px' }}
+                onClick={() => {
+                  onToggleAssistant();
+                  close();
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                aria-expanded={isAssistantOpen}
               >
-                Salir
+                <span>🐱</span> Matcher
               </button>
-            </div>
-          ) : (
-            <Link href="/auth/login" onClick={close}>
-              Iniciar sesión
-            </Link>
-          )}
+            )}
 
-          {onToggleAssistant && (
-            <button
-              type="button"
-              onClick={() => {
-                onToggleAssistant();
-                close();
-              }}
-              className="btn btn-primary btn-sm"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              aria-expanded={isAssistantOpen}
-            >
-              <span>🐱</span> Matcher
-            </button>
-          )}
+            {user ? (
+              <div className="nav-user" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    color: 'var(--green-900)',
+                  }}
+                >
+                  <UserIcon />
+                  <span>{user.name?.trim() || 'Mi cuenta'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '4px 10px' }}
+                >
+                  Salir
+                </button>
+              </div>
+            ) : (
+              <Link href="/auth/login" onClick={close} className="nav-btn-login">
+                Iniciar sesión
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
     </header>

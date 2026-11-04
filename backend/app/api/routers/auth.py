@@ -57,7 +57,25 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
 
     hashed_pw = get_password_hash(payload.password)
     # Seguridad: siempre rol 'user' en registro público
-    user = users_crud.create_user(db, email=payload.email, hashed_password=hashed_pw, role="user")
+    import inspect
+    sig = inspect.signature(users_crud.create_user)
+    if "name" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+        user = users_crud.create_user(
+            db,
+            email=payload.email,
+            hashed_password=hashed_pw,
+            role="user",
+            name=payload.name,
+        )
+    else:
+        user = users_crud.create_user(
+            db,
+            email=payload.email,
+            hashed_password=hashed_pw,
+            role="user",
+        )
+        if hasattr(user, "name"):
+            user.name = payload.name
     return user
 
 @router.post(

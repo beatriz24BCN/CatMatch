@@ -10,11 +10,19 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 def get_user_by_id(db: Session, user_id: uuid.UUID) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
 
-def create_user(db: Session, email: str, hashed_password: str, role: str = "user") -> User:
+def create_user(
+    db: Session,
+    email: str,
+    hashed_password: str,
+    role: str = "user",
+    name: Optional[str] = None,
+) -> User:
     normalized_email = email.strip().lower()
+    cleaned_name = name.strip() if name and name.strip() else None
     # Garantizar rol seguro
     safe_role = "admin" if role == "admin" else "user"
     user = User(
+        name=cleaned_name,
         email=normalized_email,
         hashed_password=hashed_password,
         role=safe_role,

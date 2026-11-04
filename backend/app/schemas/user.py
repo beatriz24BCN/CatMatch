@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict, StrictBool, field_validator
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 class UserBase(BaseModel):
+    name: Optional[str] = None
     email: str
 
     @field_validator("email")
@@ -18,9 +19,20 @@ class UserBase(BaseModel):
         return v_clean
 
 class UserRegister(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Nombre de pila o preferido del usuario")
     email: str
     password: str = Field(..., min_length=8, description="Contraseña de al menos 8 caracteres")
     # Nota de seguridad: No se aceptan campos 'role' ni 'is_admin' en el registro público.
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("El nombre no puede estar vacío")
+        if len(clean) > 100:
+            raise ValueError("El nombre no puede superar los 100 caracteres")
+        return clean
 
     @field_validator("email")
     @classmethod
@@ -46,6 +58,7 @@ class UserLogin(BaseModel):
 
 class UserRead(BaseModel):
     id: uuid.UUID
+    name: Optional[str] = None
     email: str
     role: str
     is_active: bool

@@ -200,15 +200,17 @@ Objetivo: Funcionalidades identificadas que quedan pospuestas formalmente para l
 - **ID:** US-13
 - **Épica:** EP-06
 - **Historia:** Como usuario o administrador, quiero registrarme e iniciar sesión de forma opcional con credenciales seguras (JWT), para acceder a funcionalidades restringidas según mi rol manteniendo el flujo público accesible sin cuenta.
-- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 2).
+- **Prioridad:** P1 (Entregable GeekFORCE Labs Semana 2 / Fase 2).
 - **Estado:** Completada.
 - **Criterios de aceptación:**
   1. Endpoints backend operativos: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
-  2. Almacenamiento seguro de contraseñas mediante PBKDF2-HMAC-SHA256 y tokens JWT con algoritmo explícito HS256 y expiración.
-  3. Soporte para cookies `HttpOnly` y cabeceras `Authorization: Bearer`.
-  4. Vistas frontend en `frontend-next/`: `/auth/login`, `/auth/register` y estado de sesión integrado en el Navbar.
-  5. Protección de rutas administrativas (`/api/adoption_requests/` y panel `/admin/adoption-requests`) restringidas a administradores (401/403).
-  6. Catálogo, matching y solicitudes de adopción permanecen 100% públicos sin cuenta.
+  2. El registro (`POST /api/auth/register`) solicita obligatoriamente el nombre de pila o preferido (`name`, 1–100 caracteres, recortado sin espacios iniciales/finales), junto a email y contraseña válida (mínimo 8 caracteres).
+  3. Almacenamiento seguro de contraseñas mediante PBKDF2-HMAC-SHA256 y tokens JWT con algoritmo explícito HS256 y expiración.
+  4. Soporte para cookies `HttpOnly` y cabeceras `Authorization: Bearer`.
+  5. Vistas frontend en `frontend-next/`: `/auth/login`, `/auth/register` (con campo «Nombre» obligatorio como primer elemento) y estado de sesión integrado en el Navbar.
+  6. Tras iniciar sesión, el Navbar muestra un icono de usuario acompañado de su nombre real (ej. «Bea») o «Mi cuenta» como alternativa para cuentas antiguas donde `name` sea `NULL`, sin exponer en ningún caso el correo electrónico.
+  7. Protección de rutas administrativas (`/api/adoption_requests/` y panel `/admin/adoption-requests`) restringidas a administradores (401/403).
+  8. Catálogo, matching y solicitudes de adopción permanecen 100% públicos sin cuenta.
 
 ### US-14: Historial personal de solicitudes y Favoritos
 - **ID:** US-14

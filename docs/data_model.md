@@ -127,6 +127,26 @@ Resumen: documento de diseño conceptual para el MVP de CatMatch. Contiene las c
 
 ---
 
+## Entidad: User (Autenticación y Cuentas)
+- Propósito: gestionar las cuentas de usuario para inicio de sesión, administración y personalización de la experiencia.
+- Tabla en PostgreSQL: `users` (creada en la migración `0003_add_users_table`, ampliada en `0004_password_reset` y `0005_add_users_name`).
+- Atributos principales:
+  - `id` — Tipo: `UUID` — Obligatorio: sí — PK: sí (default `uuid.uuid4`).
+  - `name` — Tipo: `VARCHAR(100)` — Obligatorio: no (`nullable=True`) — Nombre de pila o preferido del usuario (ej. «Bea», «Pepe»). Solicitado de forma obligatoria en el formulario de registro desde la Fase 2B. Cuentas creadas previamente conservan `NULL` de manera retrocompatible.
+  - `email` — Tipo: `VARCHAR(255)` — Obligatorio: sí — Índice único (`ix_users_email`). Normalizado a minúsculas y sin espacios.
+  - `hashed_password` — Tipo: `VARCHAR(255)` — Obligatorio: sí — Hash criptográfico PBKDF2-HMAC-SHA256 con 600.000 iteraciones y salt aleatorio de 16 bytes.
+  - `role` — Tipo: `VARCHAR(20)` — Obligatorio: sí — Default: `'user'` (valores: `'user'`, `'admin'`). El registro público siempre asigna `'user'`.
+  - `is_active` — Tipo: `BOOLEAN` — Obligatorio: sí — Default: `true`.
+  - `token_version` — Tipo: `INTEGER` — Obligatorio: sí — Default: `0`. Se incrementa al restablecer la contraseña para revocar instantáneamente todos los tokens JWT emitidos previamente.
+  - `created_at` — Tipo: `TIMESTAMPTZ` — Default: `now()`.
+  - `updated_at` — Tipo: `TIMESTAMPTZ` — Default: `now()`.
+- Relaciones:
+  - 1—N con `PasswordResetToken` (tabla `password_reset_tokens`, FK `user_id` con `ON DELETE CASCADE`).
+- Compatibilidad con cuentas anteriores:
+  - Al ser `name` de tipo `VARCHAR(100) NULL`, cualquier cuenta registrada con anterioridad a la migración 0005 mantiene su registro válido sin requerir datos ficticios. En la interfaz (Navbar), si `name` es `NULL` se muestra el fallback accesible «Mi cuenta» junto al icono de usuario, sin exponer jamás la dirección de correo electrónico.
+
+---
+
 ## Notas de migración del modelo previo
 - Se elimina la dependencia de `User`/cuentas en la primera fase: `Person` sustituye a `AdopterProfile` y existe de forma independiente.
 - `Match` se simplifica: se puede calcular al vuelo; si se persiste, usar la estructura mínima indicada.

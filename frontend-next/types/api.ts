@@ -67,6 +67,7 @@ export interface AdoptionRequestRead {
 
 export interface UserRead {
   id: string;
+  name?: string | null;
   email: string;
   role: 'user' | 'admin' | string;
   is_active: boolean;

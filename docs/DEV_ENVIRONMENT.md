@@ -42,6 +42,14 @@ How to use (next session)
      (the browser calls /api/... on port 3000 and frontend-next/next.config.js proxies it to http://localhost:8001)
    - run scripts/dev-check.sh
 
+**Cerrar los contenedores Docker:**
+
+Este comando sirve para detener los contenedores de CatMatch:
+
+```bash
+docker stop catmatch-backend-perm catmatch-db-recover
+```
+
 2) Verify environment at any time (read-only):
 
    ./scripts/dev-check.sh

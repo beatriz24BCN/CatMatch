@@ -38,79 +38,86 @@ export default function LoginPage() {
 
   return (
     <Layout title="Iniciar sesión" description="Accede a tu cuenta de CatMatch">
-      <div className="page-narrow page">
-        <h1>Iniciar sesión</h1>
-        <p className="lead" style={{ marginBottom: 24 }}>
-          Accede a tu cuenta de CatMatch. (Recuerda que puedes explorar gatos y solicitar adopción sin necesidad de registrarte).
-        </p>
+      <div className="auth-page">
+        <section className="auth-card" aria-labelledby="loginTitle">
+          <header className="auth-header">
+            <p className="auth-eyebrow" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '18px' }}>CatMatch</p>
+            <h1 id="loginTitle">¡Qué alegría verte de nuevo!</h1>
+            <p className="auth-subtitle" id="loginDescription">
+              Entra y sigue buscando a tu compañero ideal
+            </p>
+          </header>
 
-        {error && (
-          <div className="alert alert-error" role="alert" style={{ marginBottom: 20 }}>
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="alert alert-error" role="alert">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="card form-card" noValidate>
-          <div className="field">
-            <label htmlFor="loginEmail">Correo electrónico</label>
-            <input
-              id="loginEmail"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="loginPassword">Contraseña</label>
-            <input
-              id="loginPassword"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <div className="login-options">
-            <label className="checkbox-inline" htmlFor="loginRemember">
+          <form
+            onSubmit={handleSubmit}
+            className="auth-form"
+            aria-labelledby="loginTitle"
+            aria-describedby="loginDescription"
+            noValidate
+          >
+            <div className="field">
+              <label htmlFor="loginEmail">Correo electrónico</label>
               <input
-                id="loginRemember"
-                name="remember"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
+                id="loginEmail"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="tu@email.com"
               />
-              <span>Recordarme</span>
-            </label>
-            <Link href="/auth/forgot-password" className="login-forgot">
-              ¿Has olvidado tu contraseña?
-            </Link>
-          </div>
+            </div>
 
-          <div className="btn-row" style={{ marginTop: 24 }}>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <div className="field">
+              <label htmlFor="loginPassword">Contraseña</label>
+              <input
+                id="loginPassword"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="login-options">
+              <label className="checkbox-inline" htmlFor="loginRemember">
+                <input
+                  id="loginRemember"
+                  name="remember"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                />
+                <span>Recordarme</span>
+              </label>
+              <Link href="/auth/forgot-password" className="login-forgot">
+                ¿Has olvidado tu contraseña?
+              </Link>
+            </div>
+
+            <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
               {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
             </button>
-            <Link href="/" className="btn btn-ghost">
-              Cancelar
-            </Link>
-          </div>
+          </form>
 
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: '0.95rem' }}>
-            <span className="muted">¿No tienes cuenta todavía? </span>
-            <Link href="/auth/register" style={{ fontWeight: 600 }}>
-              Regístrate aquí
-            </Link>
-          </div>
-        </form>
+          <p className="auth-switch">
+            <span>¿Todavía no tienes cuenta? </span>
+            <Link href="/auth/register">Regístrate</Link>
+          </p>
+          <Link href="/" className="auth-guest">
+            Seguir explorando gatos sin registrarme
+          </Link>
+        </section>
       </div>
     </Layout>
   );

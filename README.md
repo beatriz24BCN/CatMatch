@@ -94,7 +94,7 @@ Entidades usadas en el MVP inicial:
 - Match (resultado de compatibilidad — puede calcularse on-demand)
 - AdoptionRequest
 
-User y Favorites quedan fuera de la primera tanda y se introducirán en la segunda tanda cuando se implementen cuentas y gestión de usuarios.
+La entidad `User` (cuentas y autenticación) se incorporó en la segunda tanda junto con el registro, inicio de sesión mediante JWT/cookies y recuperación de contraseña, ampliándose posteriormente para incluir el nombre del usuario (`name`). `Favorites` permanece reservado para fases posteriores.
 
 - **Person.time_outside — Tipo: `VARCHAR(100)` — Opcional**  
   Campo cualitativo que describe el tiempo que la persona pasa fuera de casa (por ejemplo: «trabajo principalmente desde casa» o «paso gran parte del día fuera»). No implica que la vivienda quede vacía — puede haber otras personas en el hogar. No debe confundirse con `work_hours_per_day`, que es un dato numérico laboral independiente.
@@ -197,27 +197,39 @@ Pasos para probar el envío real (pendiente: todavía no se ha configurado ning�
 
 **Probar la recuperación sin correo (solo desarrollo).** Con `PASSWORD_RESET_DEV_OUTBOX=true` y `env` igual a `dev` (valor por defecto) o `test`, el backend no exige SMTP ni envía correos: el enlace se guarda en memoria del proceso y la página `/auth/forgot-password` muestra un aviso «Modo desarrollo» con el botón **Abrir enlace de recuperación**. Se mantienen la caducidad de 30 minutos, el uso único, la validación de contraseñas y la invalidación de sesiones. El enlace se obtiene mediante `POST /api/auth/password-reset/dev-outbox` (`{"email": ...}`), oculto en OpenAPI y con respuesta `404` si el modo no está activo. Con `env=prod` o cualquier otro valor, el modo queda bloqueado aunque la variable sea `true`, y el backend lo registra al arrancar. Advertencias: cualquiera que acceda al backend puede obtener el enlace de cualquier cuenta y saber si existe, así que no lo actives en un entorno compartido o público; los enlaces se pierden al recargar el backend y no funcionan con varios workers. Como el resto de variables, en este Codespace debe añadirse al servicio del backend y recrear el contenedor (con autorización). Es exclusivamente para desarrollo: debe permanecer en `false` (o sin definir) en producción y no debe quedar activada en `compose.codespaces.yml` ni en ningún commit; tras probarla, quitar la variable y recrear de nuevo solo el backend.
 
-### 10.3. Instrucciones de arranque
+### 10.3. Iniciar y detener CatMatch
 
 El entorno de desarrollo en Codespaces cuenta con scripts conservadores y no destructivos:
 
-1. **Arranque del entorno completo:**
-   ```bash
-   cd /workspaces/CatMatch
-   ./scripts/dev-up.sh
-   ```
-   *Este script inicia los contenedores existentes sin recrearlos, aplica la regla de red necesaria para Docker, comprueba PostgreSQL y levanta Next.js en el puerto 3000 si está libre.*
+**Abrir el entorno de desarrollo:**
 
-   Puertos: **3000** (Next.js), **5432** (PostgreSQL) y **8001** (backend). Estado actual, limitaciones tras reiniciar el Codespace y error `RWLayer is unexpectedly nil`: ver [docs/CATMATCH_RECOVERY.md](docs/CATMATCH_RECOVERY.md).
+```bash
+cd /workspaces/CatMatch
+./scripts/dev-up.sh
+```
+*Este script inicia los contenedores existentes sin recrearlos, aplica la regla de red necesaria para Docker, comprueba PostgreSQL y levanta Next.js en el puerto 3000 si está libre.*
 
-2. **Comprobación de salud del entorno (solo lectura):**
-   ```bash
-   ./scripts/dev-check.sh
-   ```
-   *Verifica que los contenedores estén activos, que PostgreSQL responda, que la API `/api/cats/` devuelva datos y que el proxy de Next.js entregue la respuesta idéntica.*
+Puertos: **3000** (Next.js), **5432** (PostgreSQL) y **8001** (backend). Estado actual, limitaciones tras reiniciar el Codespace y error `RWLayer is unexpectedly nil`: ver [docs/CATMATCH_RECOVERY.md](docs/CATMATCH_RECOVERY.md).
 
-3. **Abrir la aplicación en el navegador:**
-   - Desde la pestaña **Ports** de VS Code / Codespaces, abrir el puerto **3000** (**Open in Browser**).
+**Cerrar los contenedores Docker:**
+
+Este comando sirve para detener los contenedores de CatMatch:
+
+```bash
+docker stop catmatch-backend-perm catmatch-db-recover
+```
+
+**Comprobación de salud del entorno (solo lectura):**
+
+```bash
+./scripts/dev-check.sh
+```
+*Verifica que los contenedores estén activos, que PostgreSQL responda, que la API `/api/cats/` devuelva datos y que el proxy de Next.js entregue la respuesta idéntica.*
+
+**Abrir la aplicación en el navegador:**
+- Desde la pestaña **Ports** de VS Code / Codespaces, abrir el puerto **3000** (**Open in Browser**).
+
+Para consultar las instrucciones completas, ver [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md).
 
 ### 10.4. Ejecución de pruebas
 
@@ -264,12 +276,12 @@ FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/d
 | `GET` | `/api/adoption_requests/` | Listar solicitudes registradas (requiere rol de administrador) | 200 OK / 401 / 403 |
 | `GET` | `/api/adoption_requests/{req_id}` | Consultar detalle de una solicitud (requiere rol de administrador) | 200 OK / 401 / 403 / 404 |
 | `PATCH` | `/api/adoption_requests/{req_id}` | Actualizar estado de solicitud (requiere rol de administrador) | 200 OK / 400 / 401 / 403 |
-| `POST` | `/api/auth/register` | Registrar nueva cuenta de usuario (rol estándar 'user') | 201 Created / 409 / 422 |
+| `POST` | `/api/auth/register` | Registrar nueva cuenta de usuario con nombre ('name'), email y contraseña (rol estándar 'user') | 201 Created / 409 / 422 |
 | `POST` | `/api/auth/login` | Iniciar sesión y emitir token Bearer JWT / cookie HttpOnly | 200 OK / 401 |
 | `POST` | `/api/auth/logout` | Cerrar sesión y limpiar cookie de acceso | 200 OK |
 | `POST` | `/api/auth/password-reset/request` | Solicitar enlace de recuperación por correo (respuesta genérica) | 202 Accepted / 422 / 503 (correo no configurado) |
 | `POST` | `/api/auth/password-reset/confirm` | Establecer contraseña nueva con el token del enlace e invalidar sesiones anteriores | 200 OK / 400 / 422 |
-| `GET` | `/api/auth/me` | Obtener identidad y rol del usuario autenticado | 200 OK / 401 |
+| `GET` | `/api/auth/me` | Obtener perfil del usuario autenticado (id, nombre, email y rol) | 200 OK / 401 |
 | `POST` | `/api/assistant/chat` | Conversación con el asistente RAG sobre catálogo y adopción | 200 OK / 422 |
 
 12. Documentación técnica y funcional

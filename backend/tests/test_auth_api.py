@@ -69,20 +69,23 @@ class AuthApiTestCase(unittest.TestCase):
         users_crud.get_user_by_email = lambda db, email: None
         created_user = type('U', (), {
             'id': uuid.uuid4(),
+            'name': 'Bea',
             'email': 'newuser@example.com',
             'role': 'user',
             'is_active': True,
             'created_at': datetime.now(timezone.utc),
             'updated_at': datetime.now(timezone.utc),
         })()
-        users_crud.create_user = lambda db, email, hashed_password, role: created_user
+        users_crud.create_user = lambda db, email, hashed_password, role, name=None: created_user
 
         resp = client.post("/api/auth/register", json={
+            "name": "  Bea  ",
             "email": "newuser@example.com",
             "password": "ValidPassword123"
         })
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
+        self.assertEqual(data["name"], "Bea")
         self.assertEqual(data["email"], "newuser@example.com")
         self.assertEqual(data["role"], "user")
         self.assertNotIn("password", data)
@@ -94,16 +97,26 @@ class AuthApiTestCase(unittest.TestCase):
         users_crud.get_user_by_email = lambda db, email: existing_user
 
         resp = client.post("/api/auth/register", json={
+            "name": "Bea",
             "email": "dup@example.com",
             "password": "ValidPassword123"
         })
         self.assertEqual(resp.status_code, 409)
 
-    # 5. Validación de datos de registro (contraseña corta) (422)
+    # 5. Validación de datos de registro (contraseña corta y nombre vacío) (422)
     def test_register_validation_short_password(self):
         resp = client.post("/api/auth/register", json={
+            "name": "Bea",
             "email": "valid@example.com",
             "password": "short" # < 8 caracteres
+        })
+        self.assertEqual(resp.status_code, 422)
+
+    def test_register_validation_empty_name(self):
+        resp = client.post("/api/auth/register", json={
+            "name": "   ",
+            "email": "valid@example.com",
+            "password": "ValidPassword123"
         })
         self.assertEqual(resp.status_code, 422)
 

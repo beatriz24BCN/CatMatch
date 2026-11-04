@@ -132,7 +132,7 @@ export async function updateAdoptionRequestStatus(reqId: string, status: string)
 
 // ==================== Autenticación (Auth API) ====================
 
-export async function registerUser(payload: { email: string; password: string }): Promise<UserRead> {
+export async function registerUser(payload: { name: string; email: string; password: string }): Promise<UserRead> {
   const url = buildUrl('/api/auth/register');
   const resp = await fetch(url, {
     method: 'POST',

@@ -81,12 +81,17 @@ Un 200 no basta: si el cuerpo no es una lista JSON, la comprobación falla. Tamp
 
 ## 5. La regla temporal de red
 
-- **Problema:** `iptables-legacy` tiene `FORWARD` en `DROP` y no contiene reglas para `catmatch-net`. Docker gestiona sus reglas en nftables. El tráfico entre contenedores del mismo bridge se descarta y el backend no llega a `db:5432`.
-- **Solución:** una regla en la cadena `DOCKER-USER` de `iptables-legacy`: `-i <bridge> -o <bridge> -j ACCEPT`. El bridge se calcula como `br-` + 12 primeros caracteres del ID de `catmatch-net`.
+- **Problema:** `iptables-legacy` tiene `FORWARD` en `DROP` y no contiene reglas para `catmatch-net`. Docker gestiona sus reglas en nftables. El tráfico entre contenedores del mismo bridge se descarta y el backend no llega a `db:5432`, ni puede resolver DNS ni conectar con servicios SMTP externos como Brevo.
+- **Solución:** reglas granulares en la cadena `DOCKER-USER` de `iptables-legacy` insertadas **estrictamente antes de `-j RETURN` y en este orden exacto**:
+  1. Tráfico interno del bridge: `-i <bridge> -o <bridge> -j ACCEPT` (FastAPI <-> PostgreSQL).
+  2. Respuestas entrantes para conexiones establecidas/relacionadas: `-o <bridge> -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`.
+  3. Consultas DNS salientes UDP puerto 53 restringidas al servidor DNS del entorno (`168.63.129.16`): `-i <bridge> ! -o <bridge> -d <dns_server> -p udp --dport 53 -j ACCEPT`.
+  4. Consultas DNS salientes TCP puerto 53 restringidas al servidor DNS del entorno (`168.63.129.16`): `-i <bridge> ! -o <bridge> -d <dns_server> -p tcp --dport 53 -j ACCEPT`.
+  5. Conexión SMTP saliente TCP puerto 587 para el relay de Brevo: `-i <bridge> ! -o <bridge> -p tcp --dport 587 -j ACCEPT`.
 - **Temporal:** se pierde al reiniciar Docker o el Codespace. `dev-up.sh` la vuelve a aplicar.
 - **Aplicar a mano:** `./scripts/fix-docker-net.sh`. Solo comprobar: `./scripts/fix-docker-net.sh --check` (código 2 si falta).
-- **Revertir:** `sudo iptables-legacy -D DOCKER-USER -i <bridge> -o <bridge> -j ACCEPT` (el script imprime el comando exacto).
-- **Alcance:** solo tráfico dentro de `catmatch-net`. No abre puertos hacia fuera ni toca nftables.
+- **Revertir:** ejecutar manualmente `sudo iptables-legacy -D DOCKER-USER <regla>` para cada una de las reglas administradas que se desee retirar.
+- **Alcance:** tráfico interno entre contenedores de `catmatch-net` y salida exclusiva para DNS (puerto 53) y SMTP Brevo (puerto 587). No abre puertos indiscriminadamente, no elimina reglas ajenas y no toca nftables.
 - **Origen del problema:** hipótesis sin confirmar (reglas legacy residuales frente a Docker con nftables).
 
 ## 6. Copias de seguridad existentes (no mover ni modificar)

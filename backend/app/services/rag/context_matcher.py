@@ -126,10 +126,10 @@ def format_cat_explanation(doc: RAGDocument, intent: Dict[str, Any]) -> str:
     if meta.get("good_with_children") is True:
         reasons.append("convivencia positiva con niños confirmada")
     elif meta.get("good_with_children") is False:
-        reasons.append("no apto con niños (no recomendado para familias)")
+        reasons.append("no apto con niños")
     else:
         if intent.get("children"):
-            reasons.append("compatibilidad con niños pendiente de valorar por el refugio")
+            reasons.append("compatibilidad con niños pendiente de valorar")
 
     # 2. Perros: confirmar solo si está documentado
     if meta.get("good_with_dogs") is True:
@@ -143,11 +143,11 @@ def format_cat_explanation(doc: RAGDocument, intent: Dict[str, Any]) -> str:
     # 3. Nivel de energía / piso
     act = str(meta.get("activity_level", "")).lower()
     if act == "low":
-        reasons.append("nivel de actividad bajo ideal para pisos o ambientes tranquilos")
+        reasons.append("nivel de actividad bajo ideal para piso")
     elif act == "medium":
         reasons.append("nivel de actividad moderado")
     elif act in ["high", "very_high"]:
-        reasons.append("nivel de actividad alto, juguetón y enérgico")
+        reasons.append("nivel de actividad alto y juguetón")
 
     # 4. Ubicación de la persona (sin inventar traslados ni visitas no documentadas)
     user_city = intent.get("city")
@@ -157,37 +157,37 @@ def format_cat_explanation(doc: RAGDocument, intent: Dict[str, Any]) -> str:
         else:
             reasons.append(f"ubicado en {loc}")
 
-    reasons_text = "; ".join(reasons) if reasons else "características afines a tu búsqueda"
+    reasons_text = "; ".join(reasons) if reasons else "afín a tu búsqueda"
     url_part = f" [Ver ficha oficial]({doc.url})" if doc.url else ""
 
-    return f"• **{name}**{breed_str}{age_str}{loc_str}: Recomendado por {reasons_text}.{url_part}"
+    return f"• **{name}**{breed_str}{age_str}{loc_str}: {reasons_text}.{url_part}"
 
 def generate_contextual_response(
     intent: Dict[str, Any],
     results: List[tuple[RAGDocument, float]],
     snippets: List[str]
 ) -> str:
-    """Genera una respuesta amigable, explicativa y libre de inventos."""
+    """Genera una respuesta amigable, breve, directa y libre de inventos."""
     if not results:
-        # Preguntas de seguimiento progresivas no repetitivas
+        # Preguntas de seguimiento progresivas: una sola pregunta clara
         if intent["children"] and not intent["dogs"]:
             return (
-                "He tomado nota de que convives con niños. "
-                "Para afinar la recomendación, ¿tienes también perros u otras mascotas en casa, o buscas un gato con algún nivel de actividad en particular (tranquilo o juguetón)?"
+                "¡Anotado! 🐾 Saber que convives con niños es clave para buscar un gato sociable.\n\n"
+                "¿Convives también con perro u otras mascotas?"
             )
         elif intent["dogs"] and not intent["children"]:
             return (
-                "Entiendo que convives con perro. "
-                "Para garantizar una convivencia segura, ¿hay también niños en el hogar o prefieres un gato joven o adulto?"
+                "¡Perfecto! 🐶 Tener perro en casa nos ayuda a priorizar gatos tolerantes con canes.\n\n"
+                "¿Hay también niños en el hogar?"
             )
         elif intent["calm"]:
             return (
-                "Buscas un compañero tranquilo. "
-                "¿Podrías decirme si convives con niños, perros u otros animales para asegurarnos de que el gato encaje bien en tu hogar?"
+                "¡Entendido! 🐱 Un compañero tranquilo es ideal para un piso o ambiente relajado.\n\n"
+                "¿Convives con niños o con algún perro en casa?"
             )
         return (
-            "No he encontrado información específica en el catálogo o en nuestras guías para esa consulta. "
-            "¿Podrías contarme un poco más sobre tu vivienda (piso, casa) o si convives con niños u otras mascotas?"
+            "No he encontrado información específica en el catálogo para esa consulta.\n\n"
+            "¿Podrías decirme si vives en piso o casa, y si convives con niños o mascotas?"
         )
 
     # Identificar qué condiciones se han satisfecho
@@ -201,13 +201,12 @@ def generate_contextual_response(
     elif intent["active"]:
         conditions.append("con energía y ganas de jugar")
 
-    intro = "Según los datos oficiales de CatMatch y nuestras guías de adopción:"
+    intro = "¡He encontrado opciones afines en nuestro catálogo!"
     if conditions:
-        intro = f"Teniendo en cuenta tus preferencias ({', '.join(conditions)}), hemos seleccionado los siguientes gatos según sus fichas oficiales:"
+        intro = f"¡Genial! 🐱 Teniendo en cuenta tus preferencias ({', '.join(conditions)}), estos gatos pueden encajar muy bien contigo:"
 
     points_text = "\n".join(snippets)
     closing = (
-        "\n\nTe recomendamos revisar las fichas oficiales completas para conocer todos los detalles de salud y carácter. "
-        "Si deseas que el sistema realice una evaluación detallada de compatibilidad con todos los gatos disponibles, puedes completar tu perfil en cualquier momento."
+        "\n\nPuedes consultar cada ficha para conocer más detalles o pedir que el sistema realice una evaluación detallada de compatibilidad."
     )
     return f"{intro}\n\n{points_text}{closing}"

@@ -43,6 +43,8 @@ if "$REPO_ROOT/scripts/fix-docker-net.sh" --check >"$TMP/net.out" 2>&1; then ok 
 
 echo
 echo "[dev-check] PostgreSQL:"
+DB_VOL=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' catmatch-db-recover 2>/dev/null || true)
+if [ "$DB_VOL" = "catmatch_pgdata" ]; then ok "catmatch-db-recover mounted to volume catmatch_pgdata"; else fail "catmatch-db-recover not mounted to volume catmatch_pgdata (got: '$DB_VOL')"; fi
 if docker exec catmatch-db-recover pg_isready -U postgres -d catmatch >/dev/null 2>&1; then ok "pg_isready: accepting connections"; else fail "PostgreSQL not ready (docker logs catmatch-db-recover)"; fi
 if docker exec catmatch-backend-perm python -c "import socket; socket.create_connection(('db',5432),5).close()" >/dev/null 2>&1; then ok "backend container reaches db:5432"; else fail "backend container cannot reach db:5432"; fi
 

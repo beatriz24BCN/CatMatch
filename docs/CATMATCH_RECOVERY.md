@@ -32,9 +32,14 @@ El navegador llama a `/api/...` en el origen del puerto 3000 y `frontend-next/ne
    ./scripts/dev-up.sh
    ```
    El script ejecuta en secuencia de forma idempotente y segura:
-   0. Comprueba (solo lectura) que `dockerd` usa el containerd del sistema (`--containerd /run/containerd/containerd.sock`). Si no es así, se detiene sin arrancar ni cambiar nada (ver sección 10).
-   1. Comprueba el estado de `catmatch-db-recover`. Si ya está en ejecución (`running`), no lo toca. Si está detenido, intenta arrancarlo (`docker start`, **nunca recrea**). Si falla con error `RWLayer ... is unexpectedly nil`, se detiene de inmediato reportando el fallo sin modificar nada.
-   2. Aplica la regla temporal en `iptables-legacy` (`scripts/fix-docker-net.sh`) para permitir el tráfico en la red bridge `catmatch-net`.
+   0. Comprueba que `dockerd` usa el containerd del sistema (`--containerd /run/containerd/containerd.sock`). Si no está corriendo o arrancó con el containerd erróneo, realiza una reconciliación segura y no destructiva:
+      - Verifica que no haya ningún contenedor activo usando `catmatch_pgdata`.
+      - Asegura que el containerd del sistema esté activo con `/etc/containerd/config.toml`.
+      - Verifica que los snapshots originales (`93c7ef03e6d5...`) existan en el containerd del sistema antes de reiniciar nada (si no existen, se detiene para proteger el estado).
+      - Si dockerd estaba corriendo con el socket incorrecto, lo detiene con SIGTERM y lo relanza conectado a `/run/containerd/containerd.sock`.
+      - Si `catmatch-backend-recover` estuviera activo en el 8000, lo detiene para evitar conflictos de puerto.
+   1. Comprueba el estado de `catmatch-db-recover`. Verifica estrictamente que esté montado sobre el volumen `catmatch_pgdata` (aborta si no es así). Si ya está en ejecución (`running`), no lo toca. Si está detenido, intenta arrancarlo (`docker start`, **nunca recrea**).
+   2. Aplica la regla temporal en `iptables-legacy` (`scripts/fix-docker-net.sh`) para permitir el tráfico en la red bridge `catmatch-net` (idempotente: no duplica la regla).
    3. Espera a que PostgreSQL esté listo y acepte conexiones (máx. 60 s).
    4. Comprueba `catmatch-backend-perm`. Si está corriendo, no lo toca; si está detenido, intenta arrancarlo con `docker start` (deteniéndose si detecta capa RW rota).
    5. Espera a que el backend responda en `http://127.0.0.1:8001/health` (máx. 60 s).
@@ -148,12 +153,22 @@ grep -c 'starting managed containerd' /tmp/dockerd.log   # correcto: 0
 docker ps --format '{{.Names}} {{.Ports}}'               # correcto: sin catmatch-backend-recover en el 8000
 ```
 
-`dev-up.sh` exige que `dockerd` tenga exactamente `--containerd /run/containerd/containerd.sock` (o `--containerd=/run/containerd/containerd.sock`) antes de arrancar nada y se detiene si no es así; `dev-check.sh` la muestra como `[OK]`/`[FAIL]`. Ninguno de los dos reinicia Docker.
+`dev-up.sh` comprueba que `dockerd` tenga exactamente `--containerd /run/containerd/containerd.sock` (o `--containerd=/run/containerd/containerd.sock`). Si detecta que no está conectado o que está detenido, ejecuta una reconciliación automática, segura y no destructiva descrita abajo; `dev-check.sh` muestra el estado como `[OK]`/`[FAIL]`.
 
 Nota: con el snapshotter de containerd, `GraphDriver` aparece vacío y `State.Error` conserva errores antiguos; no sirven como diagnóstico.
 
-### Recuperación (requiere autorización explícita; no recrea nada)
+### Recuperación automática (integrada en `dev-up.sh`)
 
+Al ejecutar `./scripts/dev-up.sh`, el script realiza los siguientes pasos de seguridad antes de intervenir:
+1. Comprueba si algún contenedor está usando activamente `catmatch_pgdata` bajo el daemon actual (si es así, se detiene para evitar interrupciones no deseadas).
+2. Asegura que el containerd del sistema esté activo con `/etc/containerd/config.toml` y respondiendo en `/run/containerd/containerd.sock`.
+3. Comprueba que las capas originales (`93c7ef03e6d5...`) existan en el containerd del sistema; si no existen, aborta sin reiniciar Docker.
+4. Si dockerd estaba corriendo con el socket incorrecto, lo detiene con `SIGTERM` y lo arranca con `--containerd /run/containerd/containerd.sock --dns 168.63.129.16`.
+5. Si `catmatch-backend-recover` estuviera activo en el 8000, lo detiene para evitar conflictos de puerto.
+
+### Recuperación manual de referencia (no recrea nada)
+
+Si se desea ejecutar el procedimiento paso a paso a mano:
 1. Copia en frío del volumen y validación (checksum, número de ficheros, hash del contenido).
 2. Parar el `dockerd` incorrecto: `sudo kill -TERM <PID de dockerd>` (su containerd interno termina con él).
 3. Arrancar el containerd del sistema si no está activo, en segundo plano:

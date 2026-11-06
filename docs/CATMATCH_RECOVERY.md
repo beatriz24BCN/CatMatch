@@ -208,3 +208,53 @@ Este registro conserva las comprobaciones realizadas; no garantiza un arranque d
 5. Después, la usuaria confirmó en la conversación haber recibido el correo de recuperación. Se registra como **recepción real comunicada por la destinataria**, no como comprobación independiente del buzón ni como evento de entrega consultado en Brevo. No se accedió a dev-outbox ni se consumió el token ni se cambió la contraseña.
 
 PostgreSQL no se reinició durante la actualización autorizada del backend y mantuvo su volumen. En la tarea documental y responsive posterior no se recrean ni detienen servicios y no se envían más correos. La entrega en un futuro entorno de producción sigue pendiente de prueba.
+
+## 12. Recuperación completa y validada tras reinicio — 6 de noviembre de 2026
+
+El 6 de noviembre de 2026 se diagnosticó y resolvió con éxito una interrupción del entorno provocada por el reinicio de Codespaces/Docker.
+
+### Causa raíz identificada
+
+1. **Desalineación entre dockerd y el containerd del sistema:** Al arrancar el entorno, `/usr/local/share/docker-init.sh` inició el daemon como `dockerd --dns 168.63.129.16` sin pasar el parámetro `--containerd /run/containerd/containerd.sock`. Debido a esto, Docker utilizaba un almacén interno donde no existían las capas de escritura (`RWLayer`) de `catmatch-db-recover` ni de `catmatch-backend-perm`, impidiendo su arranque.
+2. **Pérdida de reglas de red en iptables:** Las reglas en la cadena `DOCKER-USER` de `iptables-legacy` no son persistentes y se habían borrado tras el reinicio, bloqueando la comunicación interna y hacia el exterior.
+3. **Servicios dependientes detenidos:** Next.js no estaba en ejecución en el puerto 3000 y el contenedor legacy `catmatch-backend-recover` ocupaba el puerto 8000.
+
+### Procedimiento de recuperación ejecutado
+
+1. **Copias de seguridad verificadas:**
+   - Se validó la copia en frío previa `pgdata_cold_20261105T112223Z.tar.gz` mediante su checksum SHA256.
+   - Con los contenedores detenidos, se generó una copia en frío adicional preventiva: `pgdata_cold_20261106T141210Z.tar.gz` en `/home/codespace/catmatch_backups/`, verificando inmediatamente su integridad con SHA256 (`OK`) y descompresión de prueba (`tar -tzf: OK`).
+2. **Ejecución de `scripts/dev-up.sh`:**
+   - Reconciliación de containerd: detención limpia del dockerd desalineado mediante `SIGTERM` y arranque automático conectado a `/run/containerd/containerd.sock` con DNS `168.63.129.16`.
+   - Detención segura del contenedor legacy `catmatch-backend-recover` (liberando el puerto 8000).
+   - Verificación de seguridad de que `catmatch-db-recover` monta estrictamente el volumen original `catmatch_pgdata`.
+   - Arranque ordenado de PostgreSQL (`docker start catmatch-db-recover`) y confirmación de disponibilidad con `pg_isready`.
+   - Aplicación ordenada de las 5 reglas de red granulares mediante `scripts/fix-docker-net.sh`.
+   - Arranque del backend activo (`docker start catmatch-backend-perm`) y verificación de salud en el puerto 8001 (`/health`).
+   - Arranque en segundo plano de Next.js en `frontend-next/` sobre el puerto 3000 con `NEXT_PUBLIC_API_BASE` desarmado.
+3. **Verificación final integral:**
+   - La suite de comprobaciones `scripts/dev-check.sh` se ejecutó al cierre confirmando:
+     - Docker conectado al containerd del sistema (`/run/containerd/containerd.sock`).
+     - PostgreSQL activo sobre `catmatch_pgdata` con los 6 gatos del catálogo intactos.
+     - Backend respondiendo 200 en `http://127.0.0.1:8001/health` y `/api/cats/`.
+     - Next.js respondiendo 200 en `http://127.0.0.1:3000/`.
+     - Proxy inverso `/api/cats/` en el puerto 3000 devolviendo un cuerpo JSON **idéntico** al backend.
+     - Conservación íntegra de la configuración SMTP y Brevo (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `FRONTEND_BASE_URL`) cargada en el proceso del backend sin exponer valores sensibles.
+     - Todas las comprobaciones en verde: **`All checks passed.`**
+
+---
+
+## 13. Procedimiento habitual de inicio del entorno
+
+Tras cualquier reinicio de Codespaces, parada o desconexión del entorno Docker, el procedimiento estándar, seguro y no destructivo para recuperar todos los servicios de CatMatch es:
+
+```bash
+cd /workspaces/CatMatch
+./scripts/dev-up.sh
+```
+
+> **Aviso de seguridad:**
+> Este script es idempotente y no destructivo: comprueba las capas, reconcilia containerd si es necesario, monta el volumen original sin escribir en él, restaura las reglas de red y levanta el backend y Next.js.
+> 
+> Si por alguna razón `./scripts/dev-up.sh` o `./scripts/dev-check.sh` arrojan algún fallo, **NO realices intervenciones manuales ni destructivas** (no uses `docker compose down -v`, no ejecutes `docker system prune`, no elimines volúmenes ni recrees contenedores). Consulta el diagnóstico de error en la tabla de contingencia de este documento y realiza una copia de seguridad en frío antes de cualquier diagnóstico avanzado.
+

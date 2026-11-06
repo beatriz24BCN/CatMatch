@@ -297,6 +297,21 @@ FastAPI expone la documentación interactiva OpenAPI en `http://localhost:8001/d
 - **Guía de Entorno de Desarrollo:** [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)
 - **Protocolo de Recuperación y Contingencia:** [docs/CATMATCH_RECOVERY.md](docs/CATMATCH_RECOVERY.md)
 
+### 12.1. Avances del 5 y 6 de noviembre de 2026
+
+- **Matcher (05-11):** mejoras de respuestas contextuales RAG y del flujo conversacional: preparación de matches con estado de búsqueda, acceso a resultados, cambio de preferencias y reinicio de conversación con confirmación. Se mantienen minimización y reapertura; las preferencias recogidas se combinan con el borrador o perfil existente. Evidencia: commit `3076638` y componente `ChatAssistant.tsx`.
+- **Docker, Codespaces y red:** se incorporaron comprobaciones de Docker/containerd, carga privada de variables del backend y reglas granulares para tráfico interno, respuestas, DNS y SMTP. El [registro de validación](docs/CATMATCH_RECOVERY.md#11-registro-de-validación-de-desarrollo--5-y-6-de-noviembre-de-2026) detalla las comprobaciones reales y sus límites, sin publicar credenciales.
+- **Correo de recuperación (06-11):** configuración de Brevo cargada en el backend y autenticación STARTTLS aceptada (`235`). Una única solicitud real de recuperación respondió `202`, sin errores SMTP en los logs revisados. La destinataria comunicó posteriormente la recepción del correo; no se consultaron eventos de entrega en Brevo ni se consumió el token. Configuración, autenticación, intento y recepción son evidencias distintas; véase el registro anterior.
+- **Responsive de resultados (06-11):** hasta 860px inclusive, cada tarjeta muestra compatibilidad → fotografía → descripción y acciones. Por encima de 860px conserva las dos columnas de escritorio, compatibilidad a la izquierda y foto/ficha a la derecha. Solo cambia el orden CSS móvil; no cambian datos, API, criterios ni porcentajes.
+
+**Validación de este ajuste:** TypeScript pasó con `cd frontend-next && ./node_modules/.bin/tsc --noEmit --incremental false -p .`. Las comprobaciones CSS con PostCSS validaron el orden a 320, 375, 390, 430, 760 y 860px, y estilos idénticos a la versión anterior a 861, 1024 y 1440px. Se verificó el renderizado real de `CatCard` en servidor (React): un solo panel de compatibilidad, fotografía y descripción, en ese orden en el DOM. Son comprobaciones estructurales y de reglas CSS, no una prueba visual en navegador. No hay navegador automatizable disponible en este entorno; quedan pendientes capturas y revisión visual móvil/escritorio. No se repitió la suite de backend ni una compilación de producción para este cambio exclusivamente CSS y documental.
+
+### 12.2. Semana 5 de Labs y entrega
+
+La [matriz de requisitos, evidencias y próximos pasos](docs/deployment.md#61-revisión-de-evidencias--semana-5-06-11-2026) es la referencia única del seguimiento. Se ha actualizado con el texto de Semana 5 de GeekFORCE Labs aportado por la responsable del proyecto el 06-11-2026; no se ha consultado directamente el PDF.
+
+**Pendiente de entrega:** URL pública verificada, base de datos desplegada en **Supabase** (requisito explícito), variables en los proveedores, E2E desplegado con corrección de incidencias, revisión visual completa, capturas actuales y vídeo demo de máximo 3 minutos que muestre las funcionalidades principales. También queda pendiente la sesión de 60 minutos con el mentor para demostrar el despliegue, ensayar la presentación y recibir feedback sobre comunicación y narrativa. No se publica una URL de ejemplo como si fuera un despliegue real.
+
 ---
 
 API: POST /api/cats/for_person

@@ -129,3 +129,34 @@ app.add_middleware(
 
 - **Documentado y probado localmente:** La compilación estricta de Next.js (`npm run build`) y los tests de backend con SQLite en memoria y PostgreSQL pasan al 100%.
 - **Pendiente para la puesta en producción real:** Adquirir dominio, aprovisionar la instancia gestionada de PostgreSQL y configurar los certificados TLS/SSL correspondientes.
+
+### 6.1. Revisión de evidencias — Semana 5 (06-11-2026)
+
+La afirmación de pruebas del apartado anterior es un registro histórico, no una ejecución nueva ni una validación de producción. Codespaces es el entorno de desarrollo; sus puertos reenviados no acreditan un despliegue público estable.
+
+**Referencia disponible:** inicialmente se revisó una lista resumida, sin localizar `GeekFORCE Labs.pdf`. El 06-11-2026 la responsable del proyecto aportó en la conversación el texto de «GEEKFORCE LABS — SEMANA 5: Despliegue y Pulido Final», que sustituye esa referencia provisional para esta matriz. No se ha consultado directamente el PDF. El objetivo es desplegar la aplicación en producción accesible públicamente y pulir los detalles finales de calidad. El texto exige desplegar la base de datos en **Supabase**, no solo valorarlo como alternativa.
+
+| Requisito de Semana 5 | Estado | Evidencia y límite |
+|---|---|---|
+| Desplegar frontend y backend en Vercel, Netlify u otra plataforma compatible | PENDIENTE | Hay instrucciones y servicios de desarrollo operativos; no se ha verificado ninguna URL pública de producción. Los dominios de ejemplo de esta guía no son despliegues acreditados. |
+| Desplegar la base de datos en Supabase | PENDIENTE | PostgreSQL local conserva `catmatch_pgdata`. No se ha acreditado un despliegue en Supabase. Las alternativas genéricas descritas en esta guía no sustituyen este requisito de Labs. |
+| Variables de entorno de producción | PARCIAL | Plantilla y variables documentadas. SMTP validado en desarrollo; falta comprobar secretos y valores en el proveedor de producción, sin publicarlos. |
+| Verificar conexión frontend–backend | PARCIAL | El 06-11 se verificaron HTTP 200 y lista JSON en `/api/cats/`, tanto en backend como en proxy, con cuerpos idénticos. Falta repetir en el despliegue público. |
+| Pruebas end-to-end en el entorno desplegado, funcionalidades principales y corrección de errores | PENDIENTE | Las pruebas locales y la recepción de correo comunicada por la usuaria no equivalen a un E2E completo en producción. Falta ejecutar el flujo completo, registrar incidencias y corregir y volver a probar las que se encuentren. |
+| Pulido de tipografía, colores, espaciados, iconos, microinteracciones y responsive móvil | PARCIAL | Existen mejoras de Matcher y tarjetas; se ajusta el orden móvil sin cambiar escritorio. El alcance y las limitaciones de validación se registran en el README. Falta revisión visual completa de estos aspectos en dispositivos. |
+| Vídeo demo de máximo 3 minutos con las funcionalidades principales | PENDIENTE | No se ha localizado un vídeo ni un enlace de entrega verificable en el repositorio. |
+| README con enlace de despliegue, capturas y descripción | PARCIAL | Descripción y documentación disponibles; faltan URL pública verificada y capturas actuales de la aplicación para la entrega. |
+| Sesión con el mentor: preparación para Demo Day (60 minutos) | PENDIENTE | No consta evidencia de una demostración completa del despliegue, ensayo de la presentación y recepción de feedback sobre comunicación y narrativa. |
+
+**Entregables exigidos:** aplicación desplegada accesible mediante URL pública, vídeo de demostración grabado y README final con enlace de producción y capturas de pantalla. Ninguno se considera completo solo por disponer de una versión funcional en Codespaces.
+
+### 6.2. Próximos pasos (sin ejecutarlos en esta revisión)
+
+1. Elegir plataformas compatibles para frontend y backend; acordar arquitectura de proxy o dominios separados.
+2. Preparar el despliegue de la base de datos en Supabase. Se necesitan acceso al proyecto y autorización para aprovisionar recursos y aplicar el esquema o cargar datos en producción; no incluir credenciales en Git.
+3. Con autorización, preparar secretos en los proveedores y la base de producción, revisar TLS, cookies y conectividad. No reutilizar ni intervenir sobre el volumen local para esta tarea.
+4. Autorizar y realizar el despliegue; verificar sus URLs reales y ejecutar el flujo E2E: catálogo → Matcher → resultados → ficha → solicitud, además de autenticación y recuperación con una cuenta de prueba autorizada.
+5. Completar revisión móvil/escritorio, añadir capturas y URL al README y grabar/publicar el vídeo de hasta 3 minutos.
+6. Preparar la sesión de 60 minutos con el mentor: demostración completa del despliegue, ensayo de presentación y registro del feedback sobre comunicación y narrativa.
+
+No se han realizado despliegues ni cambios en producción durante esta revisión.

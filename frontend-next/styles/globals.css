@@ -370,10 +370,10 @@ img { max-width: 100%; display: block; }
     padding: 16px;
   }
   .result-cat-content {
-    order: 1;
+    order: 2;
   }
   .match-panel {
-    order: 2;
+    order: 1;
     align-self: stretch;
   }
   .result-cat-photo {

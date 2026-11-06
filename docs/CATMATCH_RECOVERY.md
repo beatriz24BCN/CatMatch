@@ -189,3 +189,22 @@ Si Docker no arranca: volver a lanzar `sudo dockerd --dns 168.63.129.16` (estado
 ### Limitación
 
 El fallo está en `docker-init.sh`, fuera del repositorio, y puede repetirse en cualquier reinicio del Codespace o de Docker. En la recuperación del 29-10, `dockerd` y `containerd` se lanzaron a mano y registran en `/tmp/dockerd-manual.log` y `/tmp/containerd-manual.log`.
+
+## 11. Registro de validación de desarrollo — 5 y 6 de noviembre de 2026
+
+Este registro conserva las comprobaciones realizadas; no garantiza un arranque desde cero tras reiniciar Codespaces o Docker.
+
+- **05-11:** los commits `bef21eb` y `3076638` incorporan la reconciliación de Docker/containerd con comprobaciones previas, la carga de variables privadas mediante `env_file` en el backend y las cinco reglas granulares DNS/SMTP descritas en la sección 5. No se guardan secretos en esta documentación.
+- **06-11, diagnóstico de solo lectura:** backend y PostgreSQL activos, volumen original `catmatch_pgdata`, PostgreSQL aceptando conexiones y backend alcanzando `db:5432`. `/health` respondió HTTP 200 con `status: ok`. El catálogo devolvió una lista JSON por backend y proxy, con cuerpos idénticos; frontend HTTP 200 y sin `NEXT_PUBLIC_API_BASE` no vacío.
+- **Red:** resolución de `smtp-relay.brevo.com` y conexión TCP al puerto 587 correctas desde el backend. `fix-docker-net.sh --check` terminó con código 0: cinco reglas únicas en orden antes de `RETURN`. No se modificó el firewall durante ese diagnóstico.
+- **Alcance de `dev-check.sh`:** no se ejecutó literalmente en la revisión de solo lectura del 06-11 porque crea archivos temporales. Se ejecutaron comprobaciones funcionales equivalentes en memoria, satisfactorias. Esto no se registra como una ejecución nueva del script.
+
+### Brevo: configuración, autenticación e intento real
+
+1. Se corrigió únicamente el usuario SMTP local para usar el identificador de Brevo en lugar del correo personal, conservando contraseña, remitente y todas las demás variables. El archivo privado continúa excluido de Git.
+2. Se detectó que el proceso del backend aún conservaba el usuario anterior. Con autorización explícita, se recreó **solo el backend** mediante `docker compose -f compose.codespaces.yml up -d --no-deps --no-build --pull never --force-recreate backend`. Esta es una intervención histórica, no una instrucción para repetirla sin autorización.
+3. Se confirmó el usuario actualizado en el proceso, la presencia de contraseña y remitente sin mostrarlos, STARTTLS con certificado validado y autenticación SMTP aceptada por Brevo (código `235`). Esta prueba no envió correos.
+4. Con autorización adicional se realizó **una sola petición**, sin reintentos, a `POST /api/auth/password-reset/request`: HTTP `202`. Los logs de la ventana revisada no mostraron errores SMTP. El envío es una tarea en segundo plano y el código actual no registra la respuesta positiva de aceptación del mensaje; `202` no prueba aceptación SMTP ni entrega.
+5. Después, la usuaria confirmó en la conversación haber recibido el correo de recuperación. Se registra como **recepción real comunicada por la destinataria**, no como comprobación independiente del buzón ni como evento de entrega consultado en Brevo. No se accedió a dev-outbox ni se consumió el token ni se cambió la contraseña.
+
+PostgreSQL no se reinició durante la actualización autorizada del backend y mantuvo su volumen. En la tarea documental y responsive posterior no se recrean ni detienen servicios y no se envían más correos. La entrega en un futuro entorno de producción sigue pendiente de prueba.

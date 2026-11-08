@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { useState } from 'react';
 import type { CatsForPersonItem } from '../types/api';
 import { CatSilhouette } from './icons';
 import { AGE_LABELS, FACTOR_LABELS } from '../lib/labels';
@@ -11,7 +10,6 @@ function prettyName(type: string){
 export default function CatCard({ item }:{ item: CatsForPersonItem }){
   const cat = item.cat as any;
   const match = item.match;
-  const [expanded, setExpanded] = useState(false);
   const factors = Array.isArray(match?.factors) ? match.factors : [];
   // order: negatives first, then positives, then unknown/informational
   const ordered = [
@@ -19,8 +17,6 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
     ...factors.filter(f => f.match === true),
     ...factors.filter(f => f.match !== false && f.match !== true),
   ];
-
-  const visibleCount = expanded ? ordered.length : Math.min(3, ordered.length);
 
   const toYesNo = (v:any)=>{
     if (v === true || String(v) === 'True' || String(v) === 'true') return 'Sí';
@@ -130,7 +126,7 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
 
           {ordered.length > 0 ? (
             <div>
-              {ordered.slice(0, visibleCount).map((f, idx) => (
+              {ordered.slice(0, 3).map((f, idx) => (
                 <div key={idx} className="factor">
                   <div className="factor-head">
                     <span>{prettyName(f.type)}</span>
@@ -151,14 +147,6 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
                   )}
                 </div>
               ))}
-
-              {ordered.length > 3 && (
-                <div style={{textAlign:'center',marginTop:8}}>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
-                    {expanded ? 'Mostrar menos' : `Mostrar ${ordered.length - visibleCount} más`}
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
             <div className="muted" style={{fontSize:'.85rem'}}>Sin factores de compatibilidad disponibles</div>

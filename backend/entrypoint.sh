@@ -38,8 +38,22 @@ for _ in range(60):
         print('db is available via configured DSN')
         break
     except Exception as e:
-        # If network-related, try gateway fallback once
+        pgcode = getattr(e, 'pgcode', None)
         err_str = str(e).lower()
+
+        # Abortar inmediatamente si las credenciales fallan o el circuit breaker saltó
+        if (
+            pgcode in ('28P01', '28000')
+            or 'password authentication failed' in err_str
+            or 'authentication failed' in err_str
+            or '28p01' in err_str
+            or 'circuitbreaker' in err_str
+            or 'too many authentication failures' in err_str
+        ):
+            print(f'FATAL: Database authentication or circuit breaker error ({e}). Aborting immediately without retrying to prevent lockout.', file=sys.stderr)
+            sys.exit(1)
+
+        # If network-related, try gateway fallback once
         print('waiting for db (primary):', e)
         if 'timeout' in err_str or 'timed out' in err_str or 'could not translate host name' in err_str or 'connection refused' in err_str:
             try:

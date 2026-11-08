@@ -152,7 +152,7 @@ Lista inicial de componentes y su responsabilidad (documental, no implementar ah
 - HowItWorks
   - Responsabilidad: pasos del proceso con iconos y descripciones
 - CatCard
-  - Responsabilidad: visualización de resultados de compatibilidad en `/adopt/results`. Estructura en dos columnas independientes en escritorio: columna izquierda con panel de compatibilidad cálido (~40%) y los tres criterios clave con datos siempre visibles; columna derecha (~60%) con fotografía apaisada 16:9, metadatos del animal y botones de acción («Ver ficha» y «Solicitar adopción») centrados en la base. Diseño responsive colapsable a 1 columna en móvil (< 860px).
+  - Responsabilidad: visualización de resultados de compatibilidad en `/adopt/results`. Estructura en dos columnas equilibradas (50% / 50%) en escritorio: columna izquierda con panel de compatibilidad cálido (`#FFF1E5`) con semáforo completo, todos los factores evaluados, tres factores iniciales visibles con botón interactivo «Mostrar más/menos» y desplegables interactivos `<details>` con datos comparados; columna derecha con fotografía apaisada 16:9, metadatos del animal, descripción original de base de datos y botones de acción («Ver ficha» y «Solicitar adopción») centrados en la base. Diseño responsive colapsable a 1 columna en móvil (≤ 860px) mostrando foto y ficha arriba, y panel de compatibilidad abajo.
 - CatTile
   - Responsabilidad: ficha compacta del gato para el catálogo general (`/adopt`) y sugerencias en estados vacíos.
 - CatGrid
@@ -176,7 +176,7 @@ Cada componente debe recibir datos y handlers mínimos para mantener separación
   - Bordes redondeados (8–16px), sombra sutil para elevar tarjetas sobre fondo
   - Uso de imágenes grandes en la parte superior de la tarjeta
   - Espaciado generoso y tipografía legible
-  - Panel de compatibilidad (`match-panel` en fichas de resultados): contenedor exterior cálido con fondo melocotón suave (`#FFF1E5`) y borde naranja claro (`#EBCBAF`), enmarcando tarjetas interiores de factores en blanco (`#FFFFFF`) con los tres criterios esenciales (convivencia con niños, otras mascotas y nivel de actividad), etiquetas semafóricas (verde, gris neutro y rojo) y desglose de datos siempre visible sin desplegables. Ficha del gato anexa con fotografía apaisada 16:9 y botones de acción centrados.
+  - Panel de compatibilidad (`match-panel` en fichas de resultados): contenedor exterior cálido con fondo melocotón suave (`#FFF1E5`) y borde naranja claro (`#EBCBAF`), enmarcando tarjetas interiores de factores en blanco (`#FFFFFF`) con todos los factores evaluados por el motor de matching, etiquetas semafóricas (verde, gris neutro y rojo), paginación interactiva (tres factores iniciales con botón interactivo «Mostrar N más» / «Mostrar menos») y desplegables de datos comparados `<details><summary>Detalles</summary>`. Ficha del gato anexa con fotografía apaisada 16:9 y botones de acción centrados en la base.
 - Jerarquía visual:
   - Titulares grandes y CTAs prominentes en hero
   - MatchScore y CTAs de adopción con alto contraste y posición fija en la vista de perfil

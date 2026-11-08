@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useState } from 'react';
 import type { CatsForPersonItem } from '../types/api';
 import { CatSilhouette } from './icons';
 import { AGE_LABELS, FACTOR_LABELS } from '../lib/labels';
@@ -7,23 +8,28 @@ function prettyName(type: string){
   return FACTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Criterios principales de compatibilidad para visualización limpia y directa
-const TARGET_FACTORS = ['good_with_children', 'good_with_other_pets', 'activity_level'];
-
 export default function CatCard({ item }:{ item: CatsForPersonItem }){
   const cat = item.cat as any;
   const match = item.match;
+  const [expanded, setExpanded] = useState(false);
   const factors = Array.isArray(match?.factors) ? match.factors : [];
-  const displayFactors = TARGET_FACTORS.map(type => factors.find(f => f.type === type)).filter(Boolean) as any[];
+  // order: negatives first, then positives, then unknown/informational
+  const ordered = [
+    ...factors.filter(f => f.match === false),
+    ...factors.filter(f => f.match === true),
+    ...factors.filter(f => f.match !== false && f.match !== true),
+  ];
 
-  const toYesNo = (v: any) => {
+  const visibleCount = expanded ? ordered.length : Math.min(3, ordered.length);
+
+  const toYesNo = (v:any)=>{
     if (v === true || String(v) === 'True' || String(v) === 'true') return 'Sí';
     if (v === false || String(v) === 'False' || String(v) === 'false') return 'No';
     return String(v);
-  };
+  }
 
-  const detailLabel = (k: string) => {
-    const map: Record<string, string> = {
+  const detailLabel = (k:string) => {
+    const map: Record<string,string> = {
       person_location: 'Tu ubicación',
       cat_location: 'Ubicación del gato',
       person_has_children: 'Tienes niños',
@@ -36,8 +42,8 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
       overlap_items: 'Rasgos en común',
       cat_health_status: 'Estado de salud',
     };
-    return map[k] || k.replace(/_/g, ' ');
-  };
+    return map[k] || k.replace(/_/g,' ');
+  }
 
   function renderFactorMessage(f:any){
     const details = f?.details || {};
@@ -111,10 +117,7 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
     return f.explanation || '';
   }
 
-  const rawDescription = String(cat?.name || '').toLowerCase() === 'oreo'
-    ? 'Sensible y tranquilo. Necesita un entorno predecible, paciencia y respeto por sus tiempos de adaptación. Cuando se siente seguro, disfruta de la compañía y va creando vínculos a su propio ritmo.'
-    : (cat?.description || '');
-  const cleanDescription = rawDescription.replace(/^\[Perfil de demostración\]\s*/i, '').trim();
+  const cleanDescription = (cat?.description || '').replace(/^\[Perfil de demostración\]\s*/i, '').trim();
   const catSlug = String(cat?.name || '').toLowerCase().trim();
   const photoClass = catSlug ? `photo-${catSlug}` : '';
 
@@ -125,10 +128,10 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
         <div style={{marginTop:6}}>
           <div className="match-explanation">{match?.explanation}</div>
 
-          {displayFactors.length > 0 ? (
+          {ordered.length > 0 ? (
             <div>
-              {displayFactors.map((f, idx) => (
-                <div key={f.type || idx} className="factor">
+              {ordered.slice(0, visibleCount).map((f, idx) => (
+                <div key={idx} className="factor">
                   <div className="factor-head">
                     <span>{prettyName(f.type)}</span>
                     <span className={`badge ${f.match === false ? 'badge-danger' : f.match === true ? 'badge-ok' : 'badge-info'}`}>
@@ -137,16 +140,25 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
                   </div>
                   <p>{renderFactorMessage(f)}</p>
                   {f.details && Object.keys(f.details).length > 0 && (
-                    <div className="factor-details-body">
-                      {Object.entries(f.details).map(([k, v]) => (
-                        <div key={k}>
-                          <strong>{detailLabel(k)}:</strong> {Array.isArray(v) ? v.join(', ') : (typeof v === 'boolean' ? toYesNo(v) : String(v))}
-                        </div>
-                      ))}
-                    </div>
+                    <details style={{marginTop:6,fontSize:'.8rem',color:'var(--muted)'}}>
+                      <summary style={{cursor:'pointer'}}>Detalles</summary>
+                      <div style={{marginTop:6}}>
+                        {Object.entries(f.details).map(([k,v]) => (
+                          <div key={k}><strong>{detailLabel(k)}:</strong> {Array.isArray(v) ? v.join(', ') : (typeof v === 'boolean' ? toYesNo(v) : String(v))}</div>
+                        ))}
+                      </div>
+                    </details>
                   )}
                 </div>
               ))}
+
+              {ordered.length > 3 && (
+                <div style={{textAlign:'center',marginTop:8}}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
+                    {expanded ? 'Mostrar menos' : `Mostrar ${ordered.length - visibleCount} más`}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="muted" style={{fontSize:'.85rem'}}>Sin factores de compatibilidad disponibles</div>

@@ -47,6 +47,16 @@ CatMatch ayuda a encontrar gatos compatibles con el estilo de vida de una person
 └── README.md                 # Este documento
 ```
 
+2.2. Entorno de producción y URLs oficiales
+
+CatMatch cuenta con un despliegue operativo en producción sobre infraestructura PaaS desacoplada:
+
+| Capa | Proveedor / Servicio | Identificador / URL pública | Configuración y comunicación |
+|---|---|---|---|
+| **Frontend** | Vercel | `catmatch-frontend-next`<br>[https://catmatch-frontend-next.vercel.app/](https://catmatch-frontend-next.vercel.app/) | Next.js 16 (Pages Router), React 19, TypeScript. Utiliza la variable `BACKEND_URL` para reescribir peticiones `/api/*` hacia Render (`next.config.js`). Las peticiones en navegador usan rutas relativas sin exponer CORS ni requerir `NEXT_PUBLIC_API_BASE`. |
+| **Backend** | Render | `catmatch-backend`<br>[https://catmatch-75g4.onrender.com](https://catmatch-75g4.onrender.com) | FastAPI + Uvicorn sobre contenedor Docker (`backend/Dockerfile`, puerto 8000, `entrypoint.sh`). Expone endpoints REST y asistente RAG local. |
+| **Base de datos** | Supabase | `ocxpapccorgqzziaapwc`<br>Región Frankfurt (`eu-central-1`) | PostgreSQL 15 gestionado. Conexión segura con SSL (`sslmode=require`) y Session Pooler. Migraciones Alembic aplicadas hasta `0005_add_users_name`. |
+
 3. MVP — Primera tanda (prioridad)
 
 La primera tanda incluye únicamente las siguientes características y entidades, sin cuentas de usuario:
@@ -86,7 +96,7 @@ Importante: en la fase inicial se priorizó producir un resultado cualitativo si
 
 Asimismo, la regla de convivencia se aplica de forma simétrica y fidedigna: un hogar sin niños o sin mascotas satisface plenamente las necesidades de un gato que requiere un entorno sin niños o sin mascotas (validado con el caso de Oreo). Se mantiene la recomendación general conservadora (`recommended: None` salvo confirmación de incompatibilidad `recommended: False`), dejando la decisión definitiva al equipo del refugio.
 
-En la vista de resultados (`/adopt/results`), las fichas de recomendación presentan un diseño en dos columnas: a la izquierda, el panel de compatibilidad con los tres criterios esenciales (*Convivencia con niños*, *Otras mascotas* y *Nivel de actividad*) y su desglose de datos siempre visible sin desplegables; a la derecha, la fotografía apaisada 16:9, los datos del gato y los botones de acción centrados.
+En la vista de resultados (`/adopt/results`), las fichas de recomendación presentan un diseño en dos columnas equilibradas (50% / 50% en escritorio): a la izquierda, el panel de compatibilidad completo con todos los factores evaluados, semáforo visual cualitativo (rojo, verde y gris), paginación interactiva (tres primeros factores visibles con botón interactivo «Mostrar N más» / «Mostrar menos») y desplegables interactivos `<details><summary>Detalles</summary>` que exponen los datos comparados de cada factor; a la derecha, la fotografía apaisada grande 16:9, los datos del animal (nombre, edad, ubicación), descripción original procedente de la base de datos y botones de acción («Ver ficha» y «Solicitar adopción») centrados en la base. En esta vista de resultados de Matcher se acota la visualización a cuatro gatos de referencia (**Milo**, **Luna**, **Nube** y **Oreo**), conservando a **Nala** y **Simba** intactos en Supabase y plenamente disponibles en el catálogo general de adopción (`/adopt`).
 
 6. Modelo de datos (primera tanda)
 
@@ -129,7 +139,7 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 
 - **Backend y Base de Datos:**
   - El backend está implementado con FastAPI (Python) estructurado en routers, schemas Pydantic v2, modelos SQLAlchemy y capa CRUD.
-  - Base de datos PostgreSQL en contenedor `catmatch-db-recover` con migraciones Alembic aplicadas hasta `0004_password_reset` (head). La 0004 es solo aditiva: añade `users.token_version` (entero, por defecto 0) y la tabla `password_reset_tokens`, sin modificar datos existentes.
+  - Base de datos PostgreSQL en contenedor `catmatch-db-recover` (desarrollo local) y Supabase en producción, con migraciones Alembic aplicadas hasta `0005_add_users_name` (head). La migración 0004 incorporó `users.token_version` y la tabla `password_reset_tokens`; la migración 0005 incorporó `users.name VARCHAR(100) NULL` para reflejar el nombre del usuario en el registro y en el Navbar.
   - Tabla `users` implementada con hashing seguro PBKDF2-HMAC-SHA256 (600.000 iteraciones) e índices únicos en `email`.
   - Autenticación JWT mediante tokens firmados HMAC-SHA256 y soporte para cookies `HttpOnly` (`catmatch_token`).
   - «Recordarme» (`remember_me`, opcional, solo `true`/`false`): sin marcar, la cookie es de sesión (se borra al cerrar el navegador) y el token caduca a los 60 min; marcado, la cookie y su token duran `REMEMBER_ME_EXPIRE_DAYS` (30 días). El token largo solo viaja en la cookie `HttpOnly`; el JSON de respuesta siempre contiene el token de 60 min.
@@ -156,7 +166,7 @@ Nota: la consulta y gestión de solicitudes (historial, panel administrativo) se
 - **Estado de seguridad y calidad visual:**
   - *Actualización de seguridad Next.js:* Actualizado a Next.js 16.4.3 en `package.json` y `package-lock.json`; `npm audit --omit=dev` reporta 0 vulnerabilidades.
   - *Identidad gráfica y navegación:* Portada limpia sin peticiones 404 a `hero-cat.jpg`, favicon `.ico` y `.svg` de marca configurados; ficha de gato con encuadre de imagen protegido (aspect ratio 4:3) y presentación de salud y cuidados.
-  - *Diseño de resultados del MVP:* Tarjetas de gatos en `/adopt/results` con composición equilibrada en tres columnas (fotografía destacada de 380px, bloque de información centrado y panel de compatibilidad exterior en tono melocotón suave `#FFF1E5` con borde `#EBCBAF`, enmarcando factores interiores en blanco con detalles desplegables).
+  - *Diseño de resultados de Matcher:* Tarjetas de gatos en `/adopt/results` con composición en dos columnas equilibradas al 50% / 50%: a la izquierda, el panel de compatibilidad completo en tono melocotón suave (`#FFF1E5`) con borde (`#EBCBAF`), semáforo completo, todos los factores evaluados, botón «Mostrar N más» / «Mostrar menos» y desplegables interactivos `<details>`; a la derecha, fotografía apaisada 16:9, metadatos, descripción original de base de datos y botones de acción centrados. En móvil (≤ 860px), el diseño colapsa a una columna mostrando la fotografía y ficha primero, y el panel de compatibilidad debajo.
 
 10. Entorno de desarrollo, configuración y ejecución
 

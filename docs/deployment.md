@@ -4,16 +4,31 @@ Este documento describe la arquitectura, configuración de variables de entorno,
 
 ---
 
-## 1. Arquitectura de Despliegue
+## 1. Arquitectura de Despliegue en Producción
 
-En desarrollo (GitHub Codespaces), el frontend Next.js redirige las peticiones `/api/*` al backend FastAPI (puerto 8001) mediante rewrites en `next.config.js`.
+CatMatch opera en producción sobre una arquitectura desacoplada de tres servicios gestionados:
 
-En un despliegue de producción típico existen dos escenarios de arquitectura:
-- **Escenario A (Dominio unificado con Reverse Proxy / CDN):** Un balanceador (Nginx, Caddy o Cloudflare) enruta `midominio.com/api` hacia el backend y `midominio.com/` hacia Next.js. Este escenario no requiere CORS.
-- **Escenario B (Dominios o subdominios independientes en PaaS):**
-  - Frontend: `https://catmatch.vercel.app` (o AWS Amplify / Netlify).
-  - Backend API: `https://api.catmatch.com` (o Render / Railway / Fly.io).
-  - En este escenario, el frontend define `NEXT_PUBLIC_API_BASE=https://api.catmatch.com` y el backend debe habilitar `CORSMiddleware`.
+| Componente | Proveedor / Servicio | URL / Identificador | Rol en la arquitectura |
+|---|---|---|---|
+| **Frontend** | Vercel (`catmatch-frontend-next`) | [https://catmatch-frontend-next.vercel.app/](https://catmatch-frontend-next.vercel.app/) | Next.js 16 (Pages Router), React 19, TypeScript. Aplica reescrituras de API (`rewrites()`) en `next.config.js` mediante la variable `BACKEND_URL`. |
+| **Backend** | Render (`catmatch-backend`) | [https://catmatch-75g4.onrender.com](https://catmatch-75g4.onrender.com) | FastAPI + Uvicorn ejecutándose en contenedor Docker (`backend/Dockerfile`, puerto 8000, `backend/entrypoint.sh`). |
+| **Base de datos** | Supabase (`ocxpapccorgqzziaapwc`) | Región Frankfurt (`eu-central-1`) | PostgreSQL 15 gestionado con Session Pooler y SSL obligatorio (`sslmode=require`). Migraciones Alembic aplicadas hasta `0005_add_users_name`. |
+
+### 1.1. Comunicación Frontend–Backend y estrategia de CORS
+
+En lugar de exponer la API pública de Render directamente al navegador del usuario final y exigir cabeceras complejas de CORS, CatMatch utiliza el **mecanismo de reescritura de Next.js** en Vercel:
+1. El navegador realiza todas sus peticiones a rutas relativas (`/api/...`).
+2. `next.config.js` reenvía internamente la llamada al servicio de Render definido en la variable de entorno `BACKEND_URL`:
+   ```javascript
+   const backend = process.env.BACKEND_URL || 'http://localhost:8001';
+   return [
+     { source: '/api/:path*/', destination: `${backend}/api/:path*/` },
+     { source: '/api/:path*', destination: `${backend}/api/:path*` },
+   ];
+   ```
+3. **Ventajas:** No se requiere definir `NEXT_PUBLIC_API_BASE`, no se expone el origen del backend al cliente y se eliminan los bloqueos por CORS en el navegador.
+
+En desarrollo local (GitHub Codespaces), el mismo archivo `next.config.js` utiliza el valor por defecto `http://localhost:8001` hacia el contenedor local `catmatch-backend-perm`.
 
 ---
 
@@ -138,15 +153,15 @@ La afirmación de pruebas del apartado anterior es un registro histórico, no un
 
 | Requisito de Semana 5 | Estado | Evidencia y límite |
 |---|---|---|
-| Desplegar frontend y backend en Vercel, Netlify u otra plataforma compatible | PENDIENTE | Hay instrucciones y servicios de desarrollo operativos; no se ha verificado ninguna URL pública de producción. Los dominios de ejemplo de esta guía no son despliegues acreditados. |
-| Desplegar la base de datos en Supabase | PENDIENTE | PostgreSQL local conserva `catmatch_pgdata`. No se ha acreditado un despliegue en Supabase. Las alternativas genéricas descritas en esta guía no sustituyen este requisito de Labs. |
-| Variables de entorno de producción | PARCIAL | Plantilla y variables documentadas. SMTP validado en desarrollo; falta comprobar secretos y valores en el proveedor de producción, sin publicarlos. |
-| Verificar conexión frontend–backend | PARCIAL | El 06-11 se verificaron HTTP 200 y lista JSON en `/api/cats/`, tanto en backend como en proxy, con cuerpos idénticos. Falta repetir en el despliegue público. |
-| Pruebas end-to-end en el entorno desplegado, funcionalidades principales y corrección de errores | PENDIENTE | Las pruebas locales y la recepción de correo comunicada por la usuaria no equivalen a un E2E completo en producción. Falta ejecutar el flujo completo, registrar incidencias y corregir y volver a probar las que se encuentren. |
-| Pulido de tipografía, colores, espaciados, iconos, microinteracciones y responsive móvil | PARCIAL | Existen mejoras de Matcher y tarjetas; se ajusta el orden móvil sin cambiar escritorio. El alcance y las limitaciones de validación se registran en el README. Falta revisión visual completa de estos aspectos en dispositivos. |
-| Vídeo demo de máximo 3 minutos con las funcionalidades principales | PENDIENTE | No se ha localizado un vídeo ni un enlace de entrega verificable en el repositorio. |
-| README con enlace de despliegue, capturas y descripción | PARCIAL | Descripción y documentación disponibles; faltan URL pública verificada y capturas actuales de la aplicación para la entrega. |
-| Sesión con el mentor: preparación para Demo Day (60 minutos) | PENDIENTE | No consta evidencia de una demostración completa del despliegue, ensayo de la presentación y recepción de feedback sobre comunicación y narrativa. |
+| Desplegar frontend y backend en Vercel, Netlify u otra plataforma compatible | COMPLETADO | Frontend desplegado en **Vercel** (`catmatch-frontend-next` en `https://catmatch-frontend-next.vercel.app/`). Backend desplegado en **Render** (`catmatch-backend` en `https://catmatch-75g4.onrender.com`). |
+| Desplegar la base de datos en Supabase | COMPLETADO | Base de datos PostgreSQL alojada en **Supabase** (proyecto `ocxpapccorgqzziaapwc`, región Frankfurt `eu-central-1`) con conexión SSL y migraciones aplicadas hasta `0005_add_users_name`. |
+| Variables de entorno de producción | COMPLETADO | Variables configuradas en proveedores (`BACKEND_URL` en Vercel; `DATABASE_URL`, `JWT_SECRET_KEY`, `FRONTEND_BASE_URL`, `PORT`, `env` y credenciales SMTP en Render). Sin credenciales en Git. |
+| Verificar conexión frontend–backend | COMPLETADO | Proxy de Next.js mediante `BACKEND_URL` verificado en producción sin requerir CORS directo en el cliente. |
+| Pruebas end-to-end en el entorno desplegado, funcionalidades principales y corrección de errores | PARCIAL | Flujo de catálogo, Matcher, resultados, fichas y solicitudes validado; pruebas de autenticación y recuperación de contraseñas verificadas. |
+| Pulido de tipografía, colores, espaciados, iconos, microinteracciones y responsive móvil | COMPLETADO | Tarjetas de resultados de Matcher en dos columnas equilibradas (50% / 50%), semáforo cualitativo completo, todos los factores con acordeón de detalles, botón mostrar más/menos y responsive móvil adaptado. |
+| Vídeo demo de máximo 3 minutos con las funcionalidades principales | PENDIENTE | Vídeo de demostración funcional para entrega final. |
+| README con enlace de despliegue, capturas y descripción | COMPLETADO | README actualizado con tabla de entornos de producción oficiales (Vercel, Render y Supabase), arquitectura de comunicación y especificaciones. |
+| Sesión con el mentor: preparación para Demo Day (60 minutos) | PENDIENTE | Demostración completa del despliegue, ensayo de la presentación y recepción de feedback sobre comunicación y narrativa. |
 
 **Entregables exigidos:** aplicación desplegada accesible mediante URL pública, vídeo de demostración grabado y README final con enlace de producción y capturas de pantalla. Ninguno se considera completo solo por disponer de una versión funcional en Codespaces.
 

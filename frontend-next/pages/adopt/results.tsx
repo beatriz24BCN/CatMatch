@@ -7,7 +7,7 @@ import { formatApiError } from '../../lib/formatError';
 import CatCard from '../../components/CatCard';
 import { useRouter } from 'next/router';
 
-// Filtro reversible para resultados de Matcher: excluye temporalmente a Simba y Nala
+// Filtro de resultados de compatibilidad: excluye a Nala y Simba
 const EXCLUDED_CATS = ['Simba', 'Nala'];
 
 export default function Results(){

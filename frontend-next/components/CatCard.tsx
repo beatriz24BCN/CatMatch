@@ -120,8 +120,8 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
   return (
     <article aria-label={`Ficha resumen del gato ${cat?.name || 'sin nombre'}`} className="card result-card">
       <aside className="match-panel" aria-label="Compatibilidad">
-        <div className="match-panel-title">Compatibilidad</div>
-        <div style={{marginTop:6}}>
+        <h3 className="match-panel-title">Compatibilidad</h3>
+        <div className="match-panel-content">
           <div className="match-explanation">{match?.explanation}</div>
 
           {ordered.length > 0 ? (
@@ -136,7 +136,7 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
                   </div>
                   <p>{renderFactorMessage(f)}</p>
                   {f.details && Object.keys(f.details).length > 0 && (
-                    <details style={{marginTop:6,fontSize:'.8rem',color:'var(--muted)'}}>
+                    <details style={{marginTop:6,fontSize:'0.8125rem',color:'var(--muted)'}}>
                       <summary style={{cursor:'pointer'}}>Detalles</summary>
                       <div style={{marginTop:6}}>
                         {Object.entries(f.details).map(([k,v]) => (
@@ -149,8 +149,17 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
               ))}
             </div>
           ) : (
-            <div className="muted" style={{fontSize:'.85rem'}}>Sin factores de compatibilidad disponibles</div>
+            <div className="muted" style={{fontSize:'0.875rem'}}>Sin factores de compatibilidad disponibles</div>
           )}
+        </div>
+        <div className="match-action-single">
+          <Link
+            href={`/adopt/cat/${cat.id}`}
+            className="btn btn-secondary"
+            aria-label={`Ver ficha de ${cat.name || 'gato'}`}
+          >
+            Ver ficha
+          </Link>
         </div>
       </aside>
 
@@ -175,9 +184,14 @@ export default function CatCard({ item }:{ item: CatsForPersonItem }){
             </div>
           </div>
           {cleanDescription && <p className="result-desc">{cleanDescription}</p>}
-          <div className="cat-actions result-actions">
-            <Link href={`/adopt/cat/${cat.id}`} className="btn btn-secondary btn-sm" aria-label={`Ver ficha de ${cat.name || 'gato'}`}>Ver ficha</Link>
-            <Link href={`/adopt/cat/${cat.id}/request`} className="btn btn-primary btn-sm" aria-label={`Solicitar adopción de ${cat.name || 'gato'}`}>Solicitar adopción</Link>
+          <div className="result-action-single">
+            <Link
+              href={`/adopt/cat/${cat.id}/request`}
+              className="btn btn-primary"
+              aria-label={`Solicitar adopción de ${cat.name || 'gato'}`}
+            >
+              Solicitar adopción
+            </Link>
           </div>
         </div>
       </div>

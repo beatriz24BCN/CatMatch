@@ -97,7 +97,7 @@ export default function Navbar({ onToggleAssistant, isAssistantOpen }: { onToggl
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 aria-expanded={isAssistantOpen}
               >
-                <span>🐱</span> Matcher
+                <span>🐱</span> Matcher Assistant
               </button>
             )}
 

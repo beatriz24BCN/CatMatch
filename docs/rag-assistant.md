@@ -95,17 +95,27 @@ Documentos estructurados en Markdown:
 
 ---
 
-## 5. Componente Frontend: Matcher
+## 5. Componente Frontend: Matcher Assistant
 
 - **Ubicación:** `frontend-next/components/ChatAssistant.tsx`.
-- **Integración:** Montado en `Layout.tsx` y accesible como punto de entrada principal desde el botón «🐱 Matcher» en el `Navbar.tsx`.
-- **Características:**
-  - Panel flotante responsive anclado en la esquina inferior derecha con encabezado «Matcher — Compatibilidad».
-  - Botón visible «✕» de cierre y reapertura sin recarga de página.
-  - Parseo de enlaces Markdown a componentes `<Link>` nativos de Next.js.
-  - Sugerencias rápidas de convivencia (*«Busco un gato tranquilo para piso»*, *«Tengo niños en casa»*, *«Convivo con perro u otra mascota»*, *«¿Cómo funciona la adopción?»*).
-  - Barra de acción integrada: *«¡Encuentra a tu compañero ideal! Descubre tus gatos compatibles y da el primer paso hacia la adopción»* con botón *«Ver mis matches →»*.
-  - Extracción cliente de preferencias (`extractPreferencesFromMessages`): analiza el diálogo (ubicación, niños, mascotas, nivel de actividad y rasgos) y lo almacena en el borrador local (`catmatch_profile_draft`) o sincroniza un perfil anónimo para evaluar el catálogo en `/adopt/results` sin exigir registro previo.
+- **Integración:** Montado en `Layout.tsx` y accesible como punto de entrada principal desde el botón «🐱 Matcher Assistant» en el `Navbar.tsx`.
+- **Características y Experiencia de Usuario:**
+  - Panel flotante responsive anclado en la esquina inferior derecha con encabezado «Matcher Assistant».
+  - Botones visibles de cierre («✕») y minimizado («—») sin recarga de página.
+  - **Conversación progresiva y contextual:** Saludo cálido y formulación de preguntas de una en una adaptadas al diálogo previo, evitando cuestionarios rígidos o bombardeo de preguntas.
+  - **Reconocimiento empático del hogar:** Valida y comenta las respuestas del usuario sobre tipo de vivienda, niños, mascotas, ritmo de vida y rasgos deseados antes de avanzar al siguiente aspecto.
+  - **Interpretación contextual de respuestas cortas:** Interpreta respuestas como «sí», «no», «ninguna» o «tampoco» en función del tema de la última pregunta formulada por el asistente, resolviendo preferencias sin entrar en bucles repetitivos.
+  - **Consultas libres de adopción y cuidados:** Resuelve dudas sobre trámites, salud, vacunas, adaptación y convivencia mediante las guías oficiales indexadas en RAG, sin volcar listados prematuros ni enlaces de gatos individuales antes de completar la compatibilidad.
+  - **Ciclos de matches recurrentes:**
+    - Primera oferta: tras acumular **3 respuestas útiles** con información real nueva.
+    - Ciclos sucesivos: se reactiva cada **2 respuestas útiles adicionales** (a las 5, 7, 9... respuestas útiles).
+    - Animación visual de búsqueda (`assistant-search-card`) con 5 barras mientras se evalúa el catálogo.
+    - Tarjeta de matches (`assistant-bubble-matches`) simplificada y elegante:
+      - **«Ir a tus matches →»**: botón principal destacado para consultar los gatos compatibles en `/adopt/results`.
+      - **«Seguir hablando»**: botón secundario para continuar el diálogo acumulando preferencias sin forzar la navegación.
+      - **«✎ Cambiar mis preferencias»**: muestra el resumen de lo anotado y permite editarlo.
+      - **«↺ Empezar de nuevo»**: reseteo voluntario de la conversación con modal de confirmación.
+  - **Persistencia de preferencias acumuladas:** Guarda de forma continua el borrador en `localStorage.catmatch_profile_draft` y sincroniza con `updatePerson()` si el usuario dispone de cuenta registrada.
 
 ---
 

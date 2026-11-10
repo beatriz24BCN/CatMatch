@@ -20,93 +20,340 @@ interface ChatAssistantProps {
 }
 
 const QUICK_PROMPTS = [
-  'Busco un gato tranquilo para piso',
+  'Vivo en un piso',
+  'Vivo en una casa',
   'Tengo niños en casa',
   'Convivo con perro u otra mascota',
-  '¿Cómo funciona la adopción?',
 ];
 
 type Preferences = Record<string, string | boolean | string[]>;
 
-function readSavedPreferences(): Record<string, unknown> {
-  const raw = localStorage.getItem('catmatch_profile_draft');
-  if (!raw) return {};
-  const draft: unknown = JSON.parse(raw);
-  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
-    throw new Error('El borrador de preferencias guardado no es válido.');
-  }
-  return { ...draft };
+interface ProgressiveTopic {
+  key: string;
+  question: string;
 }
 
-function extractPreferencesFromMessages(messages: Message[]): Preferences {
-  const userMessages = messages.filter(m => m.sender === 'user');
-  if (userMessages.length === 0) return {};
+function getNextTopicQuestion(prefs: Preferences): ProgressiveTopic | null {
+  if (!prefs.home_type) {
+    return {
+      key: 'home_type',
+      question: '¿Cómo es tu vivienda? ¿Vives en un piso o en una casa?',
+    };
+  }
+  if (prefs.has_children === undefined) {
+    return {
+      key: 'children',
+      question: '¿Hay niños o niñas conviviendo habitualmente en tu hogar?',
+    };
+  }
+  if (prefs.has_other_pets === undefined) {
+    return {
+      key: 'pets',
+      question: '¿Convives actualmente con perros, otros gatos u otra mascota en casa?',
+    };
+  }
+  if (!prefs.activity_level) {
+    return {
+      key: 'activity',
+      question: '¿Qué ritmo de vida tenéis en casa? ¿Buscáis un gato más bien tranquilo y sosegado, o activo y juguetón?',
+    };
+  }
+  if (!prefs.preferred_cat_traits || (prefs.preferred_cat_traits as string[]).length === 0) {
+    return {
+      key: 'traits',
+      question: '¿Qué rasgos de personalidad te gustaría que tuviera tu gato ideal? (por ejemplo: cariñoso y mimoso, independiente, sociable, curioso...)',
+    };
+  }
+  if (!prefs.location) {
+    return {
+      key: 'location',
+      question: '¿En qué ciudad o localidad vives? Así podremos tener en cuenta la cercanía.',
+    };
+  }
+  return null;
+}
 
-  const prefs: Preferences = {};
+function countCollectedPreferences(prefs: Preferences): number {
+  let count = 0;
+  if (prefs.home_type) count++;
+  if (prefs.has_children !== undefined) count++;
+  if (prefs.has_other_pets !== undefined) count++;
+  if (prefs.activity_level) count++;
+  if (prefs.location) count++;
+  if (Array.isArray(prefs.preferred_cat_traits) && prefs.preferred_cat_traits.length > 0) count++;
+  return count;
+}
 
-  // Ubicación conocida
+function readSavedPreferences(): Preferences {
+  const raw = typeof window !== 'undefined' ? localStorage.getItem('catmatch_profile_draft') : null;
+  if (!raw) return {};
+  try {
+    const draft: unknown = JSON.parse(raw);
+    if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
+      return {};
+    }
+    return { ...(draft as Preferences) };
+  } catch {
+    return {};
+  }
+}
+
+function detectTopicFromAssistantText(text: string): string | null {
+  const t = text.toLowerCase();
+  if (t.includes('perro') || t.includes('mascota') || t.includes('animal') || t.includes('otros gatos')) {
+    return 'pets';
+  }
+  if (t.includes('niñ') || t.includes('peque') || t.includes('hijo')) {
+    return 'children';
+  }
+  if (t.includes('vivienda') || t.includes('piso') || t.includes('casa')) {
+    return 'home_type';
+  }
+  if (t.includes('ritmo') || t.includes('actividad') || (t.includes('tranquilo') && t.includes('activo'))) {
+    return 'activity';
+  }
+  if (t.includes('rasgos') || t.includes('carácter') || t.includes('personalidad')) {
+    return 'traits';
+  }
+  if (t.includes('ciudad') || t.includes('localidad')) {
+    return 'location';
+  }
+  return null;
+}
+
+function parseUserAnswerForTopic(userText: string, topic: string | null, currentPrefs: Preferences): Preferences {
+  const t = userText.trim().toLowerCase();
+  const updated: Preferences = { ...currentPrefs };
+
+  const isExplicitNegative =
+    /^(no|ninguno|ninguna|ningunos|ningunas|tampoco|para nada|nada|que va|no hay|no tenemos|no convivo|no viven|cero|sin mascotas?|sin animales?|sin niñ[oa]s?)$/i.test(t) ||
+    /^(no[\s,\.]+)+/i.test(t);
+  const isExplicitPositive =
+    /^(s[ií]|claro|por supuesto|efectivamente|afirmativo|exacto|tenemos|tengo)$/i.test(t) ||
+    /^(s[ií][\s,\.]+)+/i.test(t);
+
+  // 1. Si el tema anterior fue niños:
+  if (topic === 'children') {
+    if (
+      isExplicitNegative ||
+      /(sin|no tengo|no tenemos|no hay|no convivo|no viven)\b.*?(niñ[oa]s?|hij[oa]s?|peques?)/i.test(t) ||
+      /\b(sin niños|sin ninos|no niños|no ninos|no hay niños|no hay ninos)\b/i.test(t)
+    ) {
+      updated.has_children = false;
+    } else if (
+      isExplicitPositive ||
+      /(tengo|tenemos|hay|con|convivo|vivimos|somos)\b.*?(niñ[oa]s?|hij[oa]s?|peques?|beb[eé]s?)/i.test(t) ||
+      /\b(con niños|con ninos)\b/i.test(t) ||
+      /\b(uno|dos|tres|\d+)\s*(niñ|hij|peque)/i.test(t)
+    ) {
+      updated.has_children = true;
+    }
+  }
+
+  // 2. Si el tema anterior fue mascotas:
+  if (topic === 'pets') {
+    if (
+      isExplicitNegative ||
+      /(sin|no tengo|no tenemos|no hay|no convivo)\b.*?(perr[oa]s?|mascotas?|animales?)/i.test(t) ||
+      /\b(sin perro|sin perros|sin mascota|sin mascotas|no perro|no perros|no mascota|no mascotas|ninguna mascota|ningun perro)\b/i.test(t)
+    ) {
+      updated.has_other_pets = false;
+    } else if (
+      isExplicitPositive ||
+      /(tengo|tenemos|hay|con|convivo|vivo|vivimos)\b.*?(perr[oa]s?|mascotas?|canes?|otros? animal|otros? gatos?)/i.test(t) ||
+      /\b(con perro|con perros|con mascota|con mascotas|tengo un perro|tengo un gato|un perro|dos perros|un gato|dos gatos|gatos?|perros?)\b/i.test(t)
+    ) {
+      updated.has_other_pets = true;
+    }
+  }
+
+  // 3. Tipo de vivienda (si se preguntó vivienda o si aparece explícitamente):
+  if (topic === 'home_type' || !updated.home_type) {
+    if (t.includes('piso') || t.includes('apartamento') || t.includes('estudio') || t.includes('ático') || t.includes('atico')) {
+      updated.home_type = 'apartment';
+    } else if (t.includes('casa') || t.includes('chalet') || t.includes('finca') || t.includes('jardín') || t.includes('jardin') || t.includes('adosado')) {
+      updated.home_type = 'house';
+    }
+  }
+
+  // 4. Nivel de actividad:
+  if (topic === 'activity' || !updated.activity_level) {
+    if (t.includes('tranquil') || t.includes('calmad') || t.includes('sosegad') || t.includes('poco activ') || t.includes('sedentari') || t.includes('relax')) {
+      updated.activity_level = 'low';
+    } else if (t.includes('activ') || t.includes('juguet') || t.includes('enérgic') || t.includes('energic') || t.includes('dinámic') || t.includes('dinamic')) {
+      updated.activity_level = 'high';
+    } else if (t.includes('moderad') || t.includes('medio') || t.includes('normal') || t.includes('equilibrad')) {
+      updated.activity_level = 'medium';
+    }
+  }
+
+  // 5. Rasgos de personalidad (en cualquier momento):
+  const traits: string[] = Array.isArray(updated.preferred_cat_traits) ? [...updated.preferred_cat_traits] : [];
+  if (t.includes('tranquil') || t.includes('calm')) { if (!traits.includes('tranquilo')) traits.push('tranquilo'); }
+  if (t.includes('cariños') || t.includes('carinos') || t.includes('mimos')) { if (!traits.includes('cariñoso')) traits.push('cariñoso'); }
+  if (t.includes('sociabl') || t.includes('amigabl')) { if (!traits.includes('sociable')) traits.push('sociable'); }
+  if (t.includes('juguet') || t.includes('activo')) { if (!traits.includes('juguetón')) traits.push('juguetón'); }
+  if (t.includes('independient')) { if (!traits.includes('independiente')) traits.push('independiente'); }
+  if (traits.length > 0) updated.preferred_cat_traits = traits;
+
+  // 6. Ciudades (en cualquier momento):
   const cities = [
     'barcelona', 'madrid', 'valencia', 'sevilla', 'zaragoza',
     'malaga', 'murcia', 'palma', 'bilbao', 'alicante', 'cordoba',
     'valladolid', 'vigo', 'gijon', 'hospitalet', 'sant miquel de balanya'
   ];
+  for (const c of cities) {
+    if (t.includes(c)) {
+      updated.location = c.charAt(0).toUpperCase() + c.slice(1);
+      break;
+    }
+  }
 
-  for (const msg of userMessages) {
-    const text = msg.text.toLowerCase();
+  // 7. Detección directa en texto si no está establecido y el texto contiene términos explícitos:
+  if (updated.has_children === undefined) {
+    if (
+      /(sin|no tengo|no tenemos|no hay|no convivo)\b.*?(niñ[oa]s?|hij[oa]s?|peques?)/i.test(t) ||
+      /\b(sin niños|sin ninos|no niños|no ninos|no hay niños)\b/i.test(t)
+    ) {
+      updated.has_children = false;
+    } else if (
+      /(tengo|tenemos|hay|con|convivo|vivimos|somos)\b.*?(niñ[oa]s?|hij[oa]s?|peques?|beb[eé]s?)/i.test(t) ||
+      /\b(con niños|con ninos)\b/i.test(t)
+    ) {
+      updated.has_children = true;
+    }
+  }
 
-    // Ubicación conocida
-    for (const c of cities) {
-      if (text.includes(c)) {
-        prefs.location = c.charAt(0).toUpperCase() + c.slice(1);
-        break;
+  if (updated.has_other_pets === undefined) {
+    if (
+      /(sin|no tengo|no tenemos|no hay|no convivo)\b.*?(perr[oa]s?|mascotas?|animales?)/i.test(t) ||
+      /\b(sin perro|sin perros|sin mascota|sin mascotas|no perro|no perros|no mascota|no mascotas)\b/i.test(t)
+    ) {
+      updated.has_other_pets = false;
+    } else if (
+      /(tengo|tenemos|hay|con|convivo|vivo|vivimos)\b.*?(perr[oa]s?|mascotas?|canes?|otros? animal|otros? gatos?)/i.test(t) ||
+      /\b(con perro|con perros|con mascota|con mascotas|tengo un perro|tengo un gato)\b/i.test(t)
+    ) {
+      updated.has_other_pets = true;
+    }
+  }
+
+  return updated;
+}
+
+function extractPreferencesFromMessages(messages: Message[]): Preferences {
+  let prefs: Preferences = {};
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.sender === 'user') {
+      let lastAssistantText = '';
+      for (let j = i - 1; j >= 0; j--) {
+        if (messages[j].sender === 'assistant') {
+          lastAssistantText = messages[j].text;
+          break;
+        }
       }
+      const topic = detectTopicFromAssistantText(lastAssistantText);
+      prefs = parseUserAnswerForTopic(msg.text, topic, prefs);
     }
-
-    // Convivencia con niños
-    const hasChildrenMatch = /(tengo|hay|con)\s+(niñ[oa]s?|hij[oa]s?|peques?)/i.test(text);
-    const noChildrenMatch = /(sin|no tengo|no hay)\s+(niñ[oa]s?|hij[oa]s?|peques?)/i.test(text);
-    if (hasChildrenMatch && !noChildrenMatch) {
-      prefs.has_children = true;
-    } else if (noChildrenMatch) {
-      prefs.has_children = false;
-    }
-
-    // Convivencia con mascotas / perros
-    const hasPetsMatch = /(tengo|hay|con|convivo con)\s+(perr[oa]s?|mascotas?|canes?|otros? animal)/i.test(text);
-    const noPetsMatch = /(sin|no tengo|no hay)\s+(perr[oa]s?|mascotas?|perro)/i.test(text);
-    if (hasPetsMatch && !noPetsMatch) {
-      prefs.has_other_pets = true;
-    } else if (noPetsMatch) {
-      prefs.has_other_pets = false;
-    }
-
-    // Tipo de vivienda
-    if (text.includes('piso') || text.includes('apartamento')) {
-      prefs.home_type = 'apartment';
-    } else if (text.includes('casa') || text.includes('chalet') || text.includes('finca') || text.includes('jardín') || text.includes('jardin')) {
-      prefs.home_type = 'house';
-    }
-
-    // Nivel de actividad
-    if (text.includes('tranquil') || text.includes('calmad') || text.includes('sosegad') || text.includes('poco activ') || text.includes('sedentari')) {
-      prefs.activity_level = 'low';
-    } else if (text.includes('activ') || text.includes('juguet') || text.includes('enérgic') || text.includes('dinámic') || text.includes('mucho jueg')) {
-      prefs.activity_level = 'high';
-    } else if (text.includes('moderad') || text.includes('medio') || text.includes('normal')) {
-      prefs.activity_level = 'medium';
-    }
-
-    // Rasgos de personalidad
-    const traits: string[] = [];
-    if (text.includes('tranquil') || text.includes('calm')) traits.push('tranquilo');
-    if (text.includes('cariños') || text.includes('carinos') || text.includes('mimos')) traits.push('cariñoso');
-    if (text.includes('sociabl') || text.includes('amigabl')) traits.push('sociable');
-    if (text.includes('juguet') || text.includes('activo')) traits.push('juguetón');
-    if (text.includes('independient')) traits.push('independiente');
-    if (traits.length > 0) prefs.preferred_cat_traits = traits;
   }
 
   return prefs;
+}
+
+function doesMessageAddInformation(prevPrefs: Preferences, newPrefs: Preferences): boolean {
+  for (const key of Object.keys(newPrefs)) {
+    if (prevPrefs[key] === undefined) return true;
+    if (Array.isArray(newPrefs[key]) && Array.isArray(prevPrefs[key])) {
+      const newArr = newPrefs[key] as string[];
+      const prevArr = prevPrefs[key] as string[];
+      if (newArr.some(item => !prevArr.includes(item))) return true;
+    } else if (newPrefs[key] !== prevPrefs[key]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function countUsefulAnswers(messages: Message[]): number {
+  let count = 0;
+  let accumulatedPrefs: Preferences = {};
+  const userIndices: number[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i].sender === 'user') userIndices.push(i);
+  }
+
+  for (const idx of userIndices) {
+    const subset = messages.slice(0, idx + 1);
+    const nextAccum = extractPreferencesFromMessages(subset);
+    if (doesMessageAddInformation(accumulatedPrefs, nextAccum)) {
+      count++;
+      accumulatedPrefs = nextAccum;
+    }
+  }
+
+  return count;
+}
+
+function isGeneralInquiry(text: string): boolean {
+  const t = text.toLowerCase();
+  return (
+    t.includes('?') ||
+    /\b(c[oó]mo|qu[eé]|cu[aá]ndo|d[oó]nde|cu[aá]nto|por qu[eé]|porque|requisito|requisitos|proceso|tr[aá]mite|adopci[oó]n|vacuna|vacunas|chip|coste|precio|tasa|pauta|pautas|consejo|consejos|adaptaci[oó]n|veterinari[oa]|salud|enfermedad|ventana|ventanas|protecci[oó]n|red|redes|visita|visitas|contrato)\b/i.test(t)
+  );
+}
+
+function buildEmpatheticAcknowledgment(newPrefs: Preferences, prevPrefs: Preferences): string {
+  const acks: string[] = [];
+
+  if (newPrefs.home_type && prevPrefs.home_type !== newPrefs.home_type) {
+    if (newPrefs.home_type === 'apartment') {
+      acks.push('¡Entendido! Un piso puede ser un hogar ideal para un gato, asegurando rascadores y ventanas bien protegidas.');
+    } else {
+      acks.push('¡Genial! Una casa ofrece mucho espacio y tranquilidad para que un felino se sienta a gusto.');
+    }
+  }
+
+  if (newPrefs.has_children !== undefined && prevPrefs.has_children !== newPrefs.has_children) {
+    if (newPrefs.has_children) {
+      acks.push('¡Qué bien! Con niños en casa es clave buscar gatos sociables, pacientes y con buena tolerancia al juego.');
+    } else {
+      acks.push('¡Anotado! Un hogar sin peques permite considerar gatos más tímidos o que prefieren un ambiente tranquilo.');
+    }
+  }
+
+  if (newPrefs.has_other_pets !== undefined && prevPrefs.has_other_pets !== newPrefs.has_other_pets) {
+    if (newPrefs.has_other_pets) {
+      acks.push('¡Dato muy importante! Al haber otras mascotas, priorizaremos gatos con convivencia positiva demostrada.');
+    } else {
+      acks.push('¡Perfecto! Al no haber otros animales en casa, el gato podrá adaptarse a su propio ritmo sin estrés.');
+    }
+  }
+
+  if (newPrefs.activity_level && prevPrefs.activity_level !== newPrefs.activity_level) {
+    if (newPrefs.activity_level === 'low') {
+      acks.push('¡Totalmente de acuerdo! Un compañero sosegado y tranquilo encajará de maravilla con un ritmo de vida relajado.');
+    } else if (newPrefs.activity_level === 'high') {
+      acks.push('¡Estupendo! Un gato juguetón y activo llenará la casa de alegría y dinamismo.');
+    } else {
+      acks.push('¡Anotado! Un nivel de actividad moderado es muy versátil y se adapta muy bien al día a día.');
+    }
+  }
+
+  if (newPrefs.location && prevPrefs.location !== newPrefs.location) {
+    acks.push(`¡Perfecto! Tener en cuenta ${newPrefs.location} nos permite valorar la proximidad con el refugio.`);
+  }
+
+  if (Array.isArray(newPrefs.preferred_cat_traits) && newPrefs.preferred_cat_traits.length > 0) {
+    const prevTraits = Array.isArray(prevPrefs.preferred_cat_traits) ? prevPrefs.preferred_cat_traits : [];
+    const addedTraits = (newPrefs.preferred_cat_traits as string[]).filter(t => !prevTraits.includes(t));
+    if (addedTraits.length > 0) {
+      acks.push(`¡Tomo nota de esos rasgos (${addedTraits.join(', ')})! El carácter es esencial para una convivencia feliz.`);
+    }
+  }
+
+  return acks.join(' ');
 }
 
 function renderFormattedMessage(text: string) {
@@ -153,7 +400,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     {
       id: 'welcome',
       sender: 'assistant',
-      text: '¡Hola! Soy Matcher 🐾\n\nTe ayudo a encontrar a tu compañero ideal y a resolver dudas sobre adopción responsable.\n\nPara empezar, ¿cómo es tu hogar? ¿Vives en piso o casa, y tienes niños u otras mascotas?',
+      text: '¡Hola! Te doy la bienvenida a **Matcher Assistant** 🐾\n\nEstoy aquí para ayudarte a encontrar al compañero felino ideal para tu hogar y resolver cualquier duda que tengas sobre la adopción responsable.\n\nPara empezar a conocerte poquito a poco, cuéntame: **¿cómo es tu vivienda? ¿Vives en un piso o en una casa?**',
     },
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -163,6 +410,9 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
   const [hasSavedPreferences, setHasSavedPreferences] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usefulAnswersCount, setUsefulAnswersCount] = useState(0);
+  const [decisionDismissed, setDecisionDismissed] = useState(false);
+  const [nextMatchThreshold, setNextMatchThreshold] = useState(3);
   const messagesRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
   const busy = loading || searching;
@@ -199,7 +449,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     try {
       const extracted = extractPreferencesFromMessages(conversation);
       const updatedDraft = { ...readSavedPreferences(), ...extracted };
-      const storedPersonId = localStorage.getItem('catmatch_person_id');
+      const storedPersonId = typeof window !== 'undefined' ? localStorage.getItem('catmatch_person_id') : null;
 
       if (Object.keys(extracted).length > 0) {
         localStorage.setItem('catmatch_profile_draft', JSON.stringify(updatedDraft));
@@ -244,6 +494,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     busyRef.current = true;
     setError(null);
     setResultsReady(false);
+
     const userMsgId = String(Date.now());
     const newMessages: Message[] = [
       ...messages.filter(m => !m.matchesReady),
@@ -252,7 +503,25 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     setMessages(newMessages);
     if (!textToSend) setInputValue('');
     setLoading(true);
-    let shouldSearch = Object.keys(extractPreferencesFromMessages(newMessages)).length > 0;
+
+    // Preferencias extraídas antes y después de este mensaje
+    const prefsBefore = extractPreferencesFromMessages(messages);
+    const prefsAfter = extractPreferencesFromMessages(newMessages);
+
+    // Contabilizar respuestas útiles reales: solo mensajes del usuario que aporten información real
+    const updatedUsefulCount = countUsefulAnswers(newMessages);
+    setUsefulAnswersCount(updatedUsefulCount);
+
+    // Actualizar borrador en localStorage de forma continua para preservar datos
+    try {
+      const mergedDraft = { ...readSavedPreferences(), ...prefsAfter };
+      if (Object.keys(mergedDraft).length > 0) {
+        localStorage.setItem('catmatch_profile_draft', JSON.stringify(mergedDraft));
+        setHasSavedPreferences(true);
+      }
+    } catch (e) {
+      console.warn('Error saving draft in ChatAssistant', e);
+    }
 
     try {
       const history = newMessages
@@ -263,35 +532,75 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
         }));
 
       const res = await sendAssistantMessage(text, history);
-      shouldSearch = shouldSearch || res.suggested_cat_ids.length > 0;
+
+      // Decisión recurrente del usuario:
+      // Primera oferta a las 3 respuestas útiles; siguientes ofertas cada 2 respuestas útiles nuevas (3, 5, 7, 9...)
+      const shouldOfferDecision = updatedUsefulCount >= nextMatchThreshold;
+
+      let replyText = '';
+
+      if (isGeneralInquiry(text)) {
+        // Consulta del usuario sobre adopción, cuidados o salud: responder con RAG oficial
+        replyText = res.response.replace(/•\s*\*\*[^*]+\*\*.*?(?=(\n\n|$))/gs, '').trim();
+        if (!shouldOfferDecision) {
+          const nextTopic = getNextTopicQuestion(prefsAfter);
+          if (nextTopic && !replyText.includes('?')) {
+            replyText += `\n\nCuando quieras seguir buscando tu gato ideal, cuéntame: **${nextTopic.question}**`;
+          }
+        }
+      } else {
+        // El usuario está compartiendo información sobre su hogar y circunstancias
+        const ack = buildEmpatheticAcknowledgment(prefsAfter, prefsBefore);
+        const nextTopic = getNextTopicQuestion(prefsAfter);
+
+        if (shouldOfferDecision) {
+          replyText = ack
+            ? `${ack}\n\n¡Hemos reunido nueva información muy valiosa sobre tu hogar!`
+            : '¡Hemos reunido nueva información muy valiosa sobre tu hogar!';
+        } else {
+          if (ack && nextTopic) {
+            replyText = `${ack}\n\n${nextTopic.question}`;
+          } else if (nextTopic) {
+            replyText = nextTopic.question;
+          } else if (ack) {
+            replyText = `${ack}\n\n¿Hay algún otro detalle de tu estilo de vida que quieras compartir?`;
+          } else {
+            replyText = res.response.replace(/•\s*\*\*[^*]+\*\*.*?(?=(\n\n|$))/gs, '').trim() || '¡Anotado!';
+          }
+        }
+      }
+
+      // Filtrar fuentes oficiales: antes de los matches NUNCA mostrar fuentes de tipo cat_profile
+      const filteredSources = (res.sources || []).filter(s => s.source_type === 'shelter_guide');
 
       const conversation: Message[] = [
         ...newMessages,
         {
           id: String(Date.now() + 1),
           sender: 'assistant',
-          text: res.response,
-          sources: res.sources,
+          text: replyText,
+          sources: filteredSources,
           suggestedCatIds: res.suggested_cat_ids,
         },
       ];
+
       setMessages(conversation);
       setLoading(false);
-    } catch (err) {
-      console.warn('Error contacting conversation assistant', err);
-      setError('No he podido conectar con el asistente en este momento. Inténtalo de nuevo.');
-      setLoading(false);
-      busyRef.current = false;
-      return;
-    }
 
-    try {
-      if (shouldSearch) {
-        await prepareMatches(newMessages);
+      if (shouldOfferDecision) {
+        setNextMatchThreshold(updatedUsefulCount + 2);
+        setDecisionDismissed(false);
+        try {
+          await prepareMatches(conversation);
+        } catch (err) {
+          console.warn('Error preparing conversation matches', err);
+          setError('No he podido preparar tus matches en este momento. Inténtalo de nuevo.');
+        }
       }
     } catch (err) {
-      console.warn('Error preparing conversation matches', err);
-      setError('No he podido preparar tus matches en este momento. Inténtalo de nuevo.');
+      console.warn('Error contacting conversation assistant', err);
+      setError('No he podido conectar con Matcher Assistant en este momento. Inténtalo de nuevo.');
+      setLoading(false);
     } finally {
       busyRef.current = false;
     }
@@ -311,19 +620,35 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      handleSend();
-    }
+  const handleKeepTalking = () => {
+    if (busyRef.current) return;
+    setDecisionDismissed(true);
+    setResultsReady(false);
+
+    const extracted = extractPreferencesFromMessages(messages);
+    const updatedDraft = { ...readSavedPreferences(), ...extracted };
+    const nextTopic = getNextTopicQuestion(updatedDraft);
+
+    const followUpText = nextTopic
+      ? `¡Perfecto, seguimos hablando! Cuantos más detalles conozcamos, más afinada será la compatibilidad.\n\n${nextTopic.question}`
+      : '¡Perfecto, seguimos hablando! Ya hemos repasado los aspectos principales de tu hogar y convivencia. Cuéntame cualquier otra duda o detalle sobre lo que buscas en tu compañero felino.';
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: `continue-${Date.now()}`,
+        sender: 'assistant',
+        text: followUpText,
+      },
+    ]);
   };
 
   const handleGoToResults = async () => {
-    if (!resultsReady || busyRef.current) return;
+    if (busyRef.current) return;
     setError(null);
     try {
       if (await router.push('/adopt/results')) onClose();
-      else setError('La navegación se ha cancelado. Pulsa de nuevo en «Ver mis matches».');
+      else setError('La navegación se ha cancelado. Pulsa de nuevo en «Ir a tus matches».');
     } catch (err) {
       console.warn('Error opening match results', err);
       setError('No he podido abrir tus matches en este momento. Inténtalo de nuevo.');
@@ -363,6 +688,13 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     ]);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleResetConversation = () => {
     if (busyRef.current) return;
     try {
@@ -375,7 +707,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
       {
         id: 'welcome',
         sender: 'assistant',
-        text: '¡Hola! Soy Matcher 🐾\n\nTe ayudo a encontrar a tu compañero ideal y a resolver dudas sobre adopción responsable.\n\nPara empezar, ¿cómo es tu hogar? ¿Vives en piso o casa, y tienes niños u otras mascotas?',
+        text: '¡Hola! Te doy la bienvenida a **Matcher Assistant** 🐾\n\nEstoy aquí para ayudarte a encontrar al compañero felino ideal para tu hogar y resolver cualquier duda que tengas sobre la adopción responsable.\n\nPara empezar a conocerte poquito a poco, cuéntame: **¿cómo es tu vivienda? ¿Vives en un piso o en una casa?**',
       },
     ]);
     setInputValue('');
@@ -385,11 +717,17 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
     setHasSavedPreferences(false);
     setConfirmingReset(false);
     setError(null);
+    setUsefulAnswersCount(0);
+    setNextMatchThreshold(3);
+    setDecisionDismissed(false);
     busyRef.current = false;
   };
 
-  const canSearch = hasSavedPreferences ||
-    messages.some(m => m.sender === 'user');
+  const currentUsefulCount = countUsefulAnswers(messages);
+
+  // El botón persistente «Ir a tus matches» NUNCA se muestra antes de alcanzar
+  // el mínimo obligatorio de 3 respuestas útiles y solo si el usuario decidió seguir hablando
+  const canSearch = currentUsefulCount >= 3 && decisionDismissed;
 
   // The component stays mounted while minimized, so the conversation state is preserved.
   if (!isOpen || isMinimized) return null;
@@ -404,7 +742,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
       <header className="assistant-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: '1.1rem' }}>🐱</span>
-          <h3 id="assistant-title" className="assistant-title">Matcher</h3>
+          <h3 id="assistant-title" className="assistant-title">Matcher Assistant</h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {onMinimize && (
@@ -412,7 +750,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
               type="button"
               onClick={onMinimize}
               className="assistant-close-btn"
-              aria-label="Minimizar Matcher"
+              aria-label="Minimizar Matcher Assistant"
               title="Minimizar"
             >
               —
@@ -422,14 +760,14 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
             type="button"
             onClick={onClose}
             className="assistant-close-btn"
-            aria-label="Cerrar Matcher"
+            aria-label="Cerrar Matcher Assistant"
           >
             ✕
           </button>
         </div>
       </header>
 
-      <div className="assistant-messages" ref={messagesRef} role="log" aria-label="Conversación con Matcher" aria-live="polite">
+      <div className="assistant-messages" ref={messagesRef} role="log" aria-label="Conversación con Matcher Assistant" aria-live="polite">
         {messages.map(m => (
           <div
             key={m.id}
@@ -447,10 +785,17 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
                     onClick={handleGoToResults}
                     className="btn btn-primary btn-sm assistant-results-button"
                   >
-                    Ver mis matches →
+                    Ir a tus matches →
                   </button>
 
                   <div className="assistant-matches-secondary-actions">
+                    <button
+                      type="button"
+                      onClick={handleKeepTalking}
+                      className="btn btn-secondary btn-sm assistant-btn-change"
+                    >
+                      Seguir hablando
+                    </button>
                     {!confirmingReset ? (
                       <>
                         <button
@@ -495,25 +840,6 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
                 </div>
               )}
             </div>
-
-            {m.sources && m.sources.length > 0 && (
-              <div className="assistant-sources">
-                <span className="assistant-sources-title">Fuentes oficiales:</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                  {m.sources.map((s, idx) => (
-                    <div key={idx} className="assistant-source-item">
-                      {s.url ? (
-                        <Link href={s.url} className="assistant-source-link">
-                          🔗 {s.title}
-                        </Link>
-                      ) : (
-                        <span>📄 {s.title}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ))}
 
@@ -521,7 +847,7 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
           <div className="assistant-msg assistant-msg-bot">
             <div className="assistant-bubble assistant-loading" role="status">
               <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-              Matcher está respondiendo…
+              Matcher Assistant está respondiendo…
             </div>
           </div>
         )}
@@ -552,9 +878,9 @@ export default function ChatAssistant({ isOpen, onClose, isMinimized = false, on
               <button
                 type="button"
                 className="assistant-chip assistant-chip-search"
-                onClick={handleSearch}
+                onClick={handleGoToResults}
               >
-                Buscar mis matches →
+                Ir a tus matches →
               </button>
               {!confirmingReset ? (
                 <button

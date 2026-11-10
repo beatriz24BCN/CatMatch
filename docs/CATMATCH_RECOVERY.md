@@ -258,3 +258,12 @@ cd /workspaces/CatMatch
 > 
 > Si por alguna razón `./scripts/dev-up.sh` o `./scripts/dev-check.sh` arrojan algún fallo, **NO realices intervenciones manuales ni destructivas** (no uses `docker compose down -v`, no ejecutes `docker system prune`, no elimines volúmenes ni recrees contenedores). Consulta el diagnóstico de error en la tabla de contingencia de este documento y realiza una copia de seguridad en frío antes de cualquier diagnóstico avanzado.
 
+---
+
+## 14. Registro de resolución de arranque — 10 de noviembre de 2026
+
+- **Diagnóstico:** En la comprobación previa de seguridad de `scripts/dev-up.sh` (línea 49), la combinación de `set -euo pipefail` con `grep -q "93c7ef03e6d5"` provocaba que `grep -q` cerrara la tubería de entrada inmediatamente tras localizar la coincidencia en la línea 11 de la lista de snapshots (~14,4 KB). Como consecuencia, el proceso emisor (`sudo ctr`) recibía `SIGPIPE` y finalizaba con código 141, activando erróneamente el aborto de seguridad a pesar de que el snapshot original existía intacto.
+- **Resolución:** Se corrigió quirúrgicamente la línea 49 sustituyendo `grep -q "93c7ef03e6d5"` por `grep "93c7ef03e6d5" >/dev/null` (que consume el flujo sin cerrar el descriptor anticipadamente).
+- **Validación:** `scripts/dev-up.sh` completó automáticamente la reconciliación segura de `dockerd` hacia `/run/containerd/containerd.sock`, levantó `catmatch-db-recover` sobre `catmatch_pgdata`, aplicó las 5 reglas de `fix-docker-net.sh`, arrancó `catmatch-backend-perm` y Next.js en el puerto 3000, finalizando con `All checks passed.` en `dev-check.sh`.
+
+

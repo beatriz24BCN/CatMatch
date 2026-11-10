@@ -45,7 +45,7 @@ ensure_docker_containerd() {
   fi
 
   # Safety verification: ensure original container snapshot exists in system containerd before touching dockerd
-  if ! sudo ctr --address /run/containerd/containerd.sock -n moby snapshots ls 2>/dev/null | grep -q "93c7ef03e6d5"; then
+  if ! sudo ctr --address /run/containerd/containerd.sock -n moby snapshots ls 2>/dev/null | grep "93c7ef03e6d5" >/dev/null; then
     die "Cannot guarantee safe recovery: snapshot for catmatch-db-recover not found in system containerd storage. Aborting without restarting Docker."
   fi
 
